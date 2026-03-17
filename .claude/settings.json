@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:support.songkick.com)",
       "WebFetch(domain:www.songkick.com)",
-      "WebFetch(domain:www.eventbrite.com)"
+      "WebFetch(domain:www.eventbrite.com)",
+      "Bash(cdk init:*)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"
