@@ -143,7 +143,7 @@ seed.json → [taste-expander] → artists.json
 
 ## Open Items / Next Steps
 
-1. **Spike Ticketmaster API** (30 min) — query `countryCode=CZ&classificationName=music`, check if known Czech venues appear
+1. ~~**Spike Ticketmaster API**~~ (30 min) — query `countryCode=CZ&classificationName=music`, done, confirmed usability for the project
 2. ~~**Spike Bandsintown API**~~ — no discovery API available; dropped in favour of two-source POC (Ticketmaster + venue scrapers)
 3. **Identify 5–8 classical venues** to scrape and check their schedule page structure
 4. **Write `seed.json`** — start with known artists, composers, and genres
