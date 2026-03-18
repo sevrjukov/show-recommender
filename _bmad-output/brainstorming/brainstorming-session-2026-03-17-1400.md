@@ -76,10 +76,10 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 | Obecní dům | Prague | ✅ | SSR (WordPress); `/page/N/` pagination (~390 events, mixed content — needs genre pre-filter); Colosseum event ID = cross-site dedup key with FOK; see `spikes/scraping_analysis/czech/scraping-spike-obecni-dum-2026-03-18.md` |
 | SOČR | Prague | ✅ | SSR (Drupal 7); no pagination (single page ~10–15 events); `dataLayer["airedDate"]` for date; pure classical; see `spikes/scraping_analysis/czech/scraping-spike-socr-2026-03-18.md` |
 | Berliner Philharmoniker | Berlin | ✅ | Typesense JSON API; plain HTTP GET + key header; `tags:=Piano` filter available; key rotates — re-fetch page HTML if broken; see `spikes/scraping_analysis/international/berliner-phil-api-spike-2026-03-18.md` |
-| Musikverein | Vienna | ⏳ | SSR; consistent structure; watch for multi-day recurring events |
-| Elbphilharmonie | Hamburg | ⏳ | SSR + some JS filters; rich metadata |
+| Musikverein | Vienna | ✅ | Two-tier: SSR listing (`spielplan.musikverein.at?month=YYYY-MM`) + JSON API per event (`/e/[ID].json`); genre code filter available (`?code=INSTRSOL` etc.); dedup key: hex event ID; see `spikes/scraping_analysis/international/musikverein-scraping-spike-2026-03-18.md` |
+| Elbphilharmonie | Hamburg | ✅ | Django SSR; infinite-scroll pagination via date-based `/ajax/1` URL chain (~25 requests for 12-week horizon); no genre filter in listing — keyword pre-filter on subtitle/title only; JSON-LD on detail pages but `workPerformed` noisy — use HTML instead; dedup key: numeric ID from URL slug; see `spikes/scraping_analysis/international/elbphilharmonie-scraping-spike-2026-03-18.md` |
 
-**Phase 2 (post-POC):** Konzerthaus Wien, Semperoper Dresden, NFM Wrocław, Slovenská filharmonie, Wiener Staatsoper
+**Phase 2 (post-POC):** Konzerthaus Wien, Semperoper Dresden, NFM Wrocław, Slovenská filharmonie, Wiener Staatsoper, Munchen
 
 **Phase 3 (post-POC):** Národní divadlo, PKF Prague Philharmonia, Collegium 1704, Wiener Philharmoniker
 
@@ -99,11 +99,13 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 - **Dedup key across sources:** `hash(normalized_date + normalized_venue + normalized_conductor)` — normalize to ISO date, canonical venue ID, lowercase+stripped conductor name; use source-native IDs as secondary key where available
 - **Source hierarchy:** when the same event appears on multiple sites, prefer the source with richer data and skip the lower-ranked duplicate — merging adds complexity for minimal gain at POC scale
 - **Per-scraper spikes required** before implementation — completed spikes linked in the POC table above; for CZ sources see full analysis in `spikes/scraping_analysis/czech/czech-classical-scraping-summary-2026-03-18.md`
+- **Error handling:** individual scraper failures are non-fatal — pipeline continues with remaining sources; failed sources are collected and reported as a warnings section at the bottom of the digest email (source name + error summary)
 
 ### Notifications
 
 - **Digest email** 1–2x per week via AWS SES
 - **Format per entry:** Artist / Show name · Venue · Date · Source URL
+- **Scraper failure warnings:** if any sources failed, appended at the bottom of the digest — source name + error summary; does not block the email from sending
 - **Deduplication:** Once an event appears in a digest it is logged and never included again
 - **Taste expansion email:** Separate email sent by `taste-expander` after each run — lists the full current `artists.json` with AI reasoning for each entry, so the user can review and curate `seed.json` if needed
 - No real-time alerts — if a show sells out before the email arrives, that's acceptable
@@ -177,17 +179,8 @@ seed.json → [taste-expander] → artists.json
 
 ---
 
-## Open Items / Next Steps
+## Next Steps
 
-1. ~~**Spike Ticketmaster API**~~ (30 min) — query `countryCode=CZ&classificationName=music`, done, confirmed usability for the project; see `spikes/api_analysis/ticketmaster-api-spike-2026-03-17.md`
-2. ~~**Spike Bandsintown API**~~ — no discovery API available; dropped in favour of two-source POC (Ticketmaster + venue scrapers)
-3. ~~**Identify 5–8 classical venues**~~ — done; 6 POC venues selected (see Event Sources), phases 2–4 documented in spikes/scraping_analysis/czech/scraping-analysis-2026-03-18.md
-4. **Write `seed.json`** — start with known artists, composers, and genres
-5. **Build `expand-taste.js`** — OpenAI API prompt to expand seed → `artists.json`
-6. **Build `scout.js`** — sequential pipeline, local first
-7. ~~**Spike Berliner Philharmoniker API**~~ — done; Typesense self-hosted API confirmed, no headless browser needed; see `spikes/scraping_analysis/international/berliner-phil-api-spike-2026-03-18.md`
-8. ~~**Spike Česká filharmonie scraping**~~ — done; SSR confirmed, no headless browser needed; JSON-LD on detail pages is cleanest extraction path; pagination via `?page=N`; see `spikes/scraping_analysis/czech/scraping-spike-ceska-filharmonie-2026-03-18.md`
-9. ~~**Spike Rudolfinum scraping**~~ — done; SSR, no headless browser needed; venue aggregator (Czech Phil events overlap with ceskafilharmonie.cz — use `?organizer=` filter to scrape only FOK/Prague Philharmonia/Radio Symphony/Collegium 1704); detail pages list multiple dates per programme; no JSON-LD, no images; see `spikes/scraping_analysis/czech/scraping-spike-rudolfinum-2026-03-18.md`
-10. ~~**Spike FOK scraping**~~ — done; Drupal 11, SSR, no headless browser needed; no JSON-LD; slug-only URLs (no numeric ID); performer pattern is `<strong>Name</strong> | role` (pipe, not `<em>`); multiple dates per detail page; overlap with Rudolfinum for Dvořák Hall events; see `spikes/scraping_analysis/czech/scraping-spike-fok-2026-03-18.md`
-11. ~~**Spike Obecní dům scraping**~~ — done; WordPress, SSR, no headless browser needed; AJAX load-more bypassed via `/en/program/page/N/` archive URLs (13 pages, ~390 events); no Event JSON-LD (WebPage only); one post per performance date (no multi-date splitting); Colosseum event ID in ticket href = cross-site dedup key with FOK; commercial concerts mixed in, need pre-filter; see `spikes/scraping_analysis/czech/scraping-spike-obecni-dum-2026-03-18.md`
-12. ~~**Spike SOČR scraping**~~ — done; Drupal 7, SSR, no headless browser needed; no pagination (single listing page, ~10–15 events); no JSON-LD; `dataLayer["airedDate"]` is cleanest date source; programme + performers share same `.field.body` container (comma delimiter); CSS background-image (no `<img>` tags); ticket URL hidden behind Drupal modal; see `spikes/scraping_analysis/czech/scraping-spike-socr-2026-03-18.md`
+1. **Write `seed.json`** — start with known artists, composers, and genres
+2. **Build `expand-taste.js`** — OpenAI API prompt to expand seed → `artists.json`
+3. **Build `scout.js`** — sequential pipeline, local first

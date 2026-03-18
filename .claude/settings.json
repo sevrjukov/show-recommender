@@ -12,7 +12,23 @@
       "WebFetch(domain:www.obecnidum.cz)",
       "WebFetch(domain:socr.rozhlas.cz)",
       "WebFetch(domain:prso.czechradio.eu)",
-      "WebFetch(domain:prso.czech.radio)"
+      "WebFetch(domain:prso.czech.radio)",
+      "WebFetch(domain:www.musikverein.at)",
+      "WebFetch(domain:www.elbphilharmonie.de)",
+      "WebFetch(domain:musikverein.at)",
+      "WebFetch(domain:spielplan.musikverein.at)",
+      "Bash(curl -s -I https://spielplan.musikverein.at/)",
+      "Bash(curl -s https://spielplan.musikverein.at/)",
+      "Bash(curl -sL https://www.musikverein.at/konzert/?id=000571db)",
+      "Bash(curl -sL https://spielplan.musikverein.at/e/000571db.json)",
+      "Bash(curl -sL https://spielplan.musikverein.at/spielplan)",
+      "Bash(curl -sL https://spielplan.musikverein.at/spielplan?month=2026-04)",
+      "Bash(curl -sL https://www.elbphilharmonie.de/en/whats-on)",
+      "Bash(curl -s \"https://www.elbphilharmonie.de/en/whats-on\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sv \"https://www.elbphilharmonie.de/en/whats-on\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sL \"https://www.elbphilharmonie.de/en/whats-on/\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sL \"https://d3c80vss50ue25.cloudfront.net/static/js/build/booking-list-page.min.5b4653f52d14.js\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -sL \"https://www.elbphilharmonie.de/en/whats-on/lucas-arthur-jussen-alexej-gerassimez-emil-kuyumcuyan/23117\" -H \"User-Agent: Mozilla/5.0\")"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

@@ -69,7 +69,6 @@ Run `cdk init app --language=typescript` in the repo root, define `RecommenderDa
 | File | Purpose |
 | ---- | ------- |
 | `_bmad-output/brainstorming/brainstorming-session-2026-03-17-1400.md` | Full architecture and requirements decisions from brainstorming |
-| `_bmad-output/planning-artifacts/ticketmaster-api-spike-2026-03-17.md` | Ticketmaster API spike results — confirms two-source architecture, useful query params |
 
 ### Technical Decisions
 
