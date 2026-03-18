@@ -4,7 +4,8 @@
       "WebFetch(domain:support.songkick.com)",
       "WebFetch(domain:www.songkick.com)",
       "WebFetch(domain:www.eventbrite.com)",
-      "Bash(cdk init:*)"
+      "Bash(cdk init:*)",
+      "WebFetch(domain:www.berliner-philharmoniker.de)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

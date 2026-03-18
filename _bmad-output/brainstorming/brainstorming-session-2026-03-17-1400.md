@@ -6,7 +6,7 @@ session_goals: 'Narrow down requirements list and define basic architecture'
 selected_approach: 'progressive-flow'
 techniques_used: ['What If Scenarios', 'Mind Mapping', 'Constraint Mapping', 'Solution Matrix']
 ideas_generated: []
-context_file: ''
+context_file: '_bmad-output/planning-artifacts/scraping-analysis-2026-03-18.md'
 ---
 
 # Brainstorming Session Results
@@ -50,7 +50,7 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 ### Taste Profile
 
 - Manually maintained seed file (`seed.json`) — artists, composers, genres
-- LLM (Claude API) expands seed into broader "extended artist list" weekly or on-demand
+- LLM (ChatGPT / OpenAI API) expands seed into broader "extended artist list" weekly or on-demand
 - All JSON, no YAML — consistent format, native to Node.js
 
 ### Geography
@@ -61,14 +61,44 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 ### Event Sources
 
 - **Ticketmaster Discovery API** — validated: 252 CZ music events, mainstream/mid-size venues (O2 Universum, Café V lese, MeetFactory); skews pop/rock/electronic; classical unlikely
-- **Classical venue scrapers** — ~5–8 hardcoded venues: Czech Philharmonic (Rudolfinum), National Theatre Prague, Prague Philharmonia, Musikverein Vienna, Philharmonie Berlin, and a few others
+- **Classical venue scrapers** — 6 hardcoded venues for POC, all SSR or SSR+light JS, weekly cadence aligned with digest Lambda
+
+**POC scrapers (Phase 1 — 6 venues):**
+
+| Venue | City | Difficulty | Notes |
+|---|---|---|---|
+| Rudolfinum | Prague | Low | Cleanest structure; baseline schema |
+| Česká filharmonie | Prague | Low | Includes composer + works metadata |
+| FOK | Prague | Low | Well-structured |
+| Obecní dům | Prague | Medium | Less structured HTML; include for piano recital coverage |
+| Musikverein | Vienna | Medium | Consistent; watch for multi-day recurring events |
+| Elbphilharmonie | Hamburg | Medium | SSR + some JS filters; rich metadata |
+| Berliner Philharmoniker | Berlin | Low (API) | Typesense JSON API; plain HTTP GET + key header; key rotates, re-fetch page HTML if it breaks; see `berliner-phil-api-spike-2026-03-18.md` |
+
+**Phase 2 (post-POC):** Konzerthaus Wien, Semperoper Dresden, NFM Wrocław, Slovenská filharmonie, Wiener Staatsoper
+
+**Phase 3 (post-POC):** Národní divadlo, PKF Prague Philharmonia, Collegium 1704, Wiener Philharmoniker
+
+**Phase 4 / advanced:** Salzburg Festival (headless browser or seasonal-only run)
+
 - Sources are isolated behind the fetch module — can be swapped or extended later without touching the rest of the pipeline
 - **Out of scope for POC:** third-party CZ discovery source (Bandsintown has no discovery API; Songkick is commercial-only); add if coverage gaps emerge
+
+### Scraping Architecture
+
+- **Rendering approach:** All POC venues are SSR or SSR+minimal JS — `fetch` + `cheerio` sufficient; no headless browser needed for POC
+- **Cadence:** Weekly, triggered by the same EventBridge cron as `event-pipeline` (or as a pre-step within it)
+- **Genre pre-filter:** Rule-based before any LLM matching
+  - **Include signals:** keywords *piano, recital, solo, concerto* in title/program; presence of known composer names (Chopin, Rachmaninov, etc.); for Berliner Philharmoniker use `tags:=Piano` or `tags:=Chamber Music` query filter directly
+  - **Exclude signals:** keywords *opera, ballet, drama, theater/theatre* — catches Staatsoper and Národní divadlo mixed-genre noise
+  - LLM classifier deferred to post-POC
+- **Dedup key across sources:** `hash(normalized_date + normalized_venue + main_performer)` — prevents same concert appearing from both venue and orchestra sites
+- **Location normalization:** Map all venue URLs → canonical city IDs: Prague, Vienna, Hamburg (extend to Berlin, Dresden, Bratislava, Wrocław, Salzburg in later phases)
 
 ### Notifications
 
 - **Digest email** 1–2x per week via AWS SES
-- **Format per entry:** Artist / Show name · Venue · Date · Source URL · one-line AI reasoning ("recommended because you like X")
+- **Format per entry:** Artist / Show name · Venue · Date · Source URL
 - **Deduplication:** Once an event appears in a digest it is logged and never included again
 - **Taste expansion email:** Separate email sent by `taste-expander` after each run — lists the full current `artists.json` with AI reasoning for each entry, so the user can review and curate `seed.json` if needed
 - No real-time alerts — if a show sells out before the email arrives, that's acceptable
@@ -91,7 +121,7 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 **Lambda 1: `taste-expander`**
 - Trigger: manual, on seed change, or monthly cron
 - Reads `config/seed.json` from S3
-- Calls Claude API → generates extended artist list
+- Calls OpenAI API (ChatGPT) → generates extended artist list
 - Hard cap: `artists.json` will not exceed 100 entries; expander stops adding once the cap is reached
 - Writes `data/artists.json` to S3
 - Local: `node expand-taste.js`
@@ -120,7 +150,7 @@ seed.json → [taste-expander] → artists.json
                      │   └── geography filter → events-raw.json
                      ├── match-filter (artists.json × events-raw.json)
                      │   └── dedup against events-sent.json → matched events
-                     ├── build-digest (Claude API → formatted digest with reasoning)
+                     ├── build-digest (OpenAI API → formatted digest with reasoning)
                      └── send-email (AWS SES)
 ```
 
@@ -131,10 +161,11 @@ seed.json → [taste-expander] → artists.json
 | In scope | Out of scope (later) |
 |---|---|
 | Manual seed.json | Spotify / YouTube auto-ingestion |
-| Claude API expansion | Specialised music similarity APIs |
+| OpenAI API (ChatGPT) expansion | Specialised music similarity APIs |
 | Ticketmaster API + venue scrapers | Full venue coverage across Central Europe |
-| ~5–8 hardcoded classical venues | Auto-discovery of new venues |
+| 6 hardcoded classical venues (Phase 1) | Auto-discovery of new venues |
 | Artist + composer name matching | Semantic / confidence-scored matching |
+| Rule-based genre pre-filter (piano/recital keywords) | LLM classifier for genre |
 | Weekly digest email (plain HTML) | Rich email template, preferences UI |
 | S3 JSON for all state | Database |
 | Single Lambda per concern | Microservices, Step Functions |
@@ -145,7 +176,8 @@ seed.json → [taste-expander] → artists.json
 
 1. ~~**Spike Ticketmaster API**~~ (30 min) — query `countryCode=CZ&classificationName=music`, done, confirmed usability for the project
 2. ~~**Spike Bandsintown API**~~ — no discovery API available; dropped in favour of two-source POC (Ticketmaster + venue scrapers)
-3. **Identify 5–8 classical venues** to scrape and check their schedule page structure
+3. ~~**Identify 5–8 classical venues**~~ — done; 6 POC venues selected (see Event Sources), phases 2–4 documented in scraping-analysis-2026-03-18.md
 4. **Write `seed.json`** — start with known artists, composers, and genres
-5. **Build `expand-taste.js`** — Claude prompt to expand seed → `artists.json`
+5. **Build `expand-taste.js`** — OpenAI API prompt to expand seed → `artists.json`
 6. **Build `scout.js`** — sequential pipeline, local first
+7. ~~**Spike Berliner Philharmoniker API**~~ — done; Typesense self-hosted API confirmed, no headless browser needed; see `berliner-phil-api-spike-2026-03-18.md`
