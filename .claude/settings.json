@@ -5,7 +5,14 @@
       "WebFetch(domain:www.songkick.com)",
       "WebFetch(domain:www.eventbrite.com)",
       "Bash(cdk init:*)",
-      "WebFetch(domain:www.berliner-philharmoniker.de)"
+      "WebFetch(domain:www.berliner-philharmoniker.de)",
+      "WebFetch(domain:www.ceskafilharmonie.cz)",
+      "WebFetch(domain:www.rudolfinum.cz)",
+      "WebFetch(domain:www.fok.cz)",
+      "WebFetch(domain:www.obecnidum.cz)",
+      "WebFetch(domain:socr.rozhlas.cz)",
+      "WebFetch(domain:prso.czechradio.eu)",
+      "WebFetch(domain:prso.czech.radio)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"
