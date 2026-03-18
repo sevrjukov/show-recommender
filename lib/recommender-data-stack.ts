@@ -20,7 +20,7 @@ export class RecommenderDataStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     });
 
-    // Seed config/seed.json on first deploy only — onCreate, no onUpdate,
+    // Seed config/user-preferences.json on first deploy only — onCreate, no onUpdate,
     // so subsequent deploys never overwrite live data.
     const seedResource = new AwsCustomResource(this, 'SeedSeedJson', {
       onCreate: {
@@ -28,14 +28,14 @@ export class RecommenderDataStack extends cdk.Stack {
         action: 'putObject',
         parameters: {
           Bucket: props.bucketName,
-          Key: 'config/seed.json',
+          Key: 'config/user-preferences.json',
           Body: JSON.stringify({ artists: [], composers: [], genres: [] }),
           ContentType: 'application/json',
         },
-        physicalResourceId: PhysicalResourceId.of('seed-seed-json'),
+        physicalResourceId: PhysicalResourceId.of('seed-user-preferences-json'),
       },
       policy: AwsCustomResourcePolicy.fromSdkCalls({
-        resources: [`arn:aws:s3:::${props.bucketName}/config/seed.json`],
+        resources: [`arn:aws:s3:::${props.bucketName}/config/user-preferences.json`],
       }),
     });
     seedResource.node.addDependency(this.bucket);

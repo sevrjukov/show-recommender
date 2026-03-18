@@ -4,7 +4,7 @@ inputDocuments: []
 session_topic: 'Automatic musical shows and concerts recommender (personal POC)'
 session_goals: 'Narrow down requirements list and define basic architecture'
 selected_approach: 'progressive-flow'
-techniques_used: ['What If Scenarios', 'Mind Mapping', 'Constraint Mapping', 'Solution Matrix']
+techniques_used: ['What If Scenarios', 'Mind Mapping', 'Constraint Mapping', 'Solution Matrix', 'Continuation — LLM matching + simplification']
 ideas_generated: []
 context_file: '_bmad-output/spikes/scraping_analysis/czech/scraping-analysis-2026-03-18.md'
 inputDocuments:
@@ -52,8 +52,7 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 
 ### Taste Profile
 
-- Manually maintained seed file (`seed.json`) — artists, composers, genres
-- LLM (ChatGPT / OpenAI API) expands seed into broader "extended artist list" weekly or on-demand
+- Manually maintained preferences file (`user-preferences.json`) — artists, composers, genres
 - All JSON, no YAML — consistent format, native to Node.js
 
 ### Geography
@@ -92,10 +91,7 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 
 - **Rendering approach:** All POC venues are SSR or JSON API — `fetch` + `cheerio` sufficient; no headless browser needed for POC
 - **Cadence:** Weekly, triggered by the same EventBridge cron as `event-pipeline` (or as a pre-step within it)
-- **Genre pre-filter:** Rule-based before any LLM matching
-  - **Include signals:** keywords *piano, recital, solo, concerto* in title/program; presence of known composer names; where available push filter to API query (e.g. Berliner Philharmoniker `tags:=Piano`)
-  - **Exclude signals:** keywords *opera, ballet, drama, theater/theatre*
-  - LLM classifier deferred to post-POC
+- **Matching:** LLM-based fuzzy matching — handles exact name match, transliteration variants (e.g. Čajkovskij / Tchaikovsky / Tschaikowsky), and genre/scene proximity (e.g. Thrillseekers surfaced when Armin van Buuren is in preferences). No rule-based genre pre-filter; LLM receives `user-preferences.json` + pre-filtered event list and returns matched events with per-match reasoning, plus "consider adding" suggestions.
 - **Dedup key across sources:** `hash(normalized_date + normalized_venue + normalized_conductor)` — normalize to ISO date, canonical venue ID, lowercase+stripped conductor name; use source-native IDs as secondary key where available
 - **Source hierarchy:** when the same event appears on multiple sites, prefer the source with richer data and skip the lower-ranked duplicate — merging adds complexity for minimal gain at POC scale
 - **Per-scraper spikes required** before implementation — completed spikes linked in the POC table above; for CZ sources see full analysis in `spikes/scraping_analysis/czech/czech-classical-scraping-summary-2026-03-18.md`
@@ -104,61 +100,53 @@ Small personal project. No multi-user concerns. Goal is a working POC that autom
 ### Notifications
 
 - **Digest email** 1–2x per week via AWS SES
-- **Format per entry:** Artist / Show name · Venue · Date · Source URL
+- **Format per entry:** Artist / Show name · Venue · Date · Source URL · LLM reasoning for inclusion
+- **"Consider adding" section:** appended to digest — artists/composers the LLM found relevant in this week's events but not present in `user-preferences.json`; allows easy curation without a separate email
 - **Scraper failure warnings:** if any sources failed, appended at the bottom of the digest — source name + error summary; does not block the email from sending
 - **Deduplication:** Once an event appears in a digest it is logged and never included again
-- **Taste expansion email:** Separate email sent by `taste-expander` after each run — lists the full current `artists.json` with AI reasoning for each entry, so the user can review and curate `seed.json` if needed
 - No real-time alerts — if a show sells out before the email arrives, that's acceptable
 
 ### Infrastructure
 
-- **Two Lambda functions** + S3 for all persistence
+- **One Lambda function** + S3 for all persistence
 - **CloudWatch alarm** on Lambda errors → SNS → SES email alert for silent failure detection
-- Local Node.js scripts first (`expand-taste.js`, `scout.js`), then deploy as Lambdas
+- Local Node.js script first (`recommender.js`), then deploy as Lambda
 - No database — S3 JSON files only
-- EventBridge cron trigger for `event-pipeline` Lambda (weekly) and `taste-expander` Lambda (monthly)
-- **AWS CDK project** for all infrastructure deployment (Lambdas, S3 bucket, EventBridge rules, CloudWatch alarm, SNS, SES)
+- EventBridge cron trigger for `event-pipeline` Lambda (weekly)
+- **AWS CDK project** for all infrastructure deployment (Lambda, S3 bucket, EventBridge rule, CloudWatch alarm, SNS, SES)
 
 ---
 
 ## Architecture
 
-### Two Lambdas
+### One Lambda
 
-**Lambda 1: `taste-expander`**
-- Trigger: manual, on seed change, or monthly cron
-- Reads `config/seed.json` from S3
-- Calls OpenAI API (ChatGPT) → generates extended artist list
-- Hard cap: `artists.json` will not exceed 100 entries; expander stops adding once the cap is reached
-- Writes `data/artists.json` to S3
-- Local: `node expand-taste.js`
-
-**Lambda 2: `event-pipeline`** (`scout.js` locally)
+**Lambda: `event-pipeline`** (`recommender.js` locally)
 - Trigger: EventBridge weekly cron
-- Sequential pipeline: fetch → match/filter → build digest → send email
-- Local: `node scout.js`
+- Sequential pipeline: fetch → deduplicate → exclude already-sent → LLM match → build digest → send email
+- Local: `node recommender.js`
 
 ### S3 Layout
 
 ```
-/config/seed.json          ← manually maintained
-/data/artists.json         ← LLM-expanded, written by taste-expander
-/data/events-raw.json      ← geography-filtered raw events, written by fetch step
-/data/events-sent.json     ← append-only dedup log
+/config/user-preferences.json   ← manually maintained
+/data/events-raw.json           ← geography-filtered raw events, written by fetch step
+/data/events-sent.json          ← append-only dedup log
 ```
 
 ### Pipeline Flow
 
 ```
-seed.json → [taste-expander] → artists.json
-                                     ↓
-                   [event-pipeline / scout.js]
-                     ├── fetch-events (Ticketmaster + venue scrapers)
-                     │   └── geography filter → events-raw.json
-                     ├── match-filter (artists.json × events-raw.json)
-                     │   └── dedup against events-sent.json → matched events
-                     ├── build-digest (OpenAI API → formatted digest with reasoning)
-                     └── send-email (AWS SES)
+user-preferences.json
+        ↓
+[event-pipeline / recommender.js]
+  ├── fetch-events (Ticketmaster + venue scrapers)
+  │   └── geography filter → events-raw.json
+  ├── deduplicate + exclude already-sent (events-sent.json) → pre-filtered events
+  ├── LLM match (user-preferences.json × pre-filtered events)
+  │   └── matched events (with reasoning) + "consider adding" suggestions
+  ├── build-digest
+  └── send-email (AWS SES)
 ```
 
 ---
@@ -167,20 +155,22 @@ seed.json → [taste-expander] → artists.json
 
 | In scope | Out of scope (later) |
 |---|---|
-| Manual seed.json | Spotify / YouTube auto-ingestion |
-| OpenAI API (ChatGPT) expansion | Specialised music similarity APIs |
+| Manual `user-preferences.json` | Spotify / YouTube auto-ingestion |
+| LLM fuzzy matching (exact + transliteration + genre/scene) | Specialised music similarity APIs |
 | Ticketmaster API + venue scrapers | Full venue coverage across Central Europe |
 | 8 hardcoded classical venues (Phase 1) | Auto-discovery of new venues |
-| Artist + composer name matching | Semantic / confidence-scored matching |
-| Rule-based genre pre-filter (piano/recital keywords) | LLM classifier for genre |
+| "Consider adding" section in digest | Dedicated taste-expansion workflow |
 | Weekly digest email (plain HTML) | Rich email template, preferences UI |
 | S3 JSON for all state | Database |
-| Single Lambda per concern | Microservices, Step Functions |
+| Single Lambda | Microservices, Step Functions |
 
 ---
 
 ## Next Steps
 
-1. **Write `seed.json`** — start with known artists, composers, and genres
-2. **Build `expand-taste.js`** — OpenAI API prompt to expand seed → `artists.json`
-3. **Build `scout.js`** — sequential pipeline, local first
+1. **Write `user-preferences.json`** — start with known artists, composers, and genres
+2. **Build `recommender.js`** — sequential pipeline, local first:
+   - fetch-events (Ticketmaster + venue scrapers) → geography filter → events-raw.json
+   - deduplicate + exclude already-sent
+   - LLM match → matched events + "consider adding" suggestions
+   - build-digest + send-email (SES)
