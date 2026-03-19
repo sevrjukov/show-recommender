@@ -23,7 +23,7 @@ export async function sendDigestEmail(
   htmlBody: string,
 ): Promise<void> {
   console.log(`[email] Sending digest to ${recipientEmail}`);
-  const now = new Date().toISOString().slice(0, 10);
+  const now = formatDate(new Date().toISOString());
   await ses.send(new SendEmailCommand({
     Source: senderEmail,
     Destination: { ToAddresses: [recipientEmail] },
@@ -33,4 +33,9 @@ export async function sendDigestEmail(
     },
   }));
   console.log('[email] Digest sent successfully');
+}
+
+function formatDate(isoDate: string): string {
+  const d = new Date(`${isoDate.slice(0, 10)}T12:00:00Z`);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }

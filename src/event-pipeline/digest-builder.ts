@@ -8,8 +8,8 @@ import type { MatchResult, SourceError } from './types.js';
  */
 const S = {
   body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 24px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
-  container: 'background: #fff; border-radius: 8px; padding: 32px 40px;',
-  h2: 'font-size: 26px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 32px; margin-bottom: 12px;',
+  container: 'background: #fff; border-radius: 8px; padding: 32px 16px;',
+  h1: 'font-size: 26px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin: 0 0 12px 0;',
   ul: 'padding: 0; list-style: none; margin: 0;',
   li: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0;',
   liWarning: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #b45309;',
@@ -50,9 +50,9 @@ export function buildDigest(result: MatchResult, errors: SourceError[]): string 
     const items = sorted.map(({ event, reasoning }) =>
       `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${formatDate(event.date)}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
     );
-    sections.push(`<h2 style="${S.h2}">Upcoming events for you</h2><ul style="${S.ul}">${items.join('')}</ul>`);
+    sections.push(`<h1 style="${S.h1}">Upcoming events for you</h1><ul style="${S.ul}">${items.join('')}</ul>`);
   } else {
-    sections.push(`<h2 style="${S.h2}">Upcoming events for you</h2><p style="${S.p}">No new matching events this week.</p>`);
+    sections.push(`<h1 style="${S.h1}">Upcoming events for you</h1><p style="${S.p}">No new matching events this week.</p>`);
   }
 
   // --- Consider adding ---
@@ -60,13 +60,13 @@ export function buildDigest(result: MatchResult, errors: SourceError[]): string 
     const items = result.suggestions.map(s =>
       `<li style="${S.li}"><strong>${escapeHtml(s.name)}</strong><br><em style="${S.em}">${escapeHtml(s.reasoning)}</em></li>`
     );
-    sections.push(`<h2 style="${S.h2}">Consider adding to your preferences</h2><ul style="${S.ul}">${items.join('')}</ul>`);
+    sections.push(`<h1 style="${S.h1}">Consider adding to your preferences</h1><ul style="${S.ul}">${items.join('')}</ul>`);
   }
 
   // --- Source warnings ---
   if (errors.length > 0) {
     const items = errors.map(e => `<li style="${S.liWarning}"><strong>${escapeHtml(e.sourceId)}</strong>: ${escapeHtml(e.error)}</li>`);
-    sections.push(`<h2 style="${S.h2}">⚠️ Source warnings</h2><ul style="${S.ul}">${items.join('')}</ul>`);
+    sections.push(`<h1 style="${S.h1}">⚠️ Source warnings</h1><ul style="${S.ul}">${items.join('')}</ul>`);
   }
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="${S.body}"><div style="${S.container}">${sections.join('')}</div></body></html>`;
