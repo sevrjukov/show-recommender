@@ -88,7 +88,6 @@
     "Liszt",
     "Mahler",
     "Dvořák",
-    "Janáček",
     "Smetana",
     "Scriabin",
     "Prokofiev",
@@ -98,13 +97,12 @@
     "Saint-Saëns",
     "Grieg",
     "Philip Glass",
-    "Enaudi",
+    "Ludovico Enaudi",
     "Hans Zimmer",
     "John Williams"
   ],
   "genres": [
-    "classical",
-    "romantic classical",
+    "classical instrumental",
     "classical piano",
     "piano recital",
     "contemporary classical",

@@ -212,7 +212,7 @@ async function scrapeDetailPage(url: string): Promise<CfDetail> {
 
     const nameRaw = ld['name'];
     if (typeof nameRaw === 'string') {
-      title = nameRaw.trim();
+      title = load(nameRaw).text().trim();
     }
     if (typeof startDate === 'string') {
       // Parse as Europe/Prague local date — slicing is wrong for UTC ISO strings
@@ -226,7 +226,7 @@ async function scrapeDetailPage(url: string): Promise<CfDetail> {
     // location can be a Place object or an array of Place objects
     const locObj = Array.isArray(loc) ? (loc[0] as Record<string, unknown>) : (loc as Record<string, unknown> | undefined);
     if (typeof locObj?.['name'] === 'string') {
-      venue = locObj['name'];
+      venue = load(locObj['name']).text().trim();
     }
   }
 

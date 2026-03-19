@@ -7,14 +7,14 @@ import type { MatchResult, SourceError } from './types.js';
  * strip `<style>` blocks from the `<head>`. Edit here to restyle the digest.
  */
 const S = {
-  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
-  container: 'max-width: 620px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 32px 40px;',
-  h2: 'font-size: 17px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 32px; margin-bottom: 12px;',
+  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 24px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
+  container: 'background: #fff; border-radius: 8px; padding: 32px 40px;',
+  h2: 'font-size: 26px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 32px; margin-bottom: 12px;',
   ul: 'padding: 0; list-style: none; margin: 0;',
   li: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0;',
   liWarning: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #b45309;',
   a: 'color: #0066cc; text-decoration: none;',
-  em: 'color: #555; font-style: italic; font-size: 13px;',
+  em: 'color: #555; font-style: italic; font-size: 20px;',
   p: 'color: #555;',
 };
 
@@ -46,7 +46,8 @@ export function buildDigest(result: MatchResult, errors: SourceError[]): string 
 
   // --- Matched events ---
   if (result.matched.length > 0) {
-    const items = result.matched.map(({ event, reasoning }) =>
+    const sorted = [...result.matched].sort((a, b) => a.event.date.localeCompare(b.event.date));
+    const items = sorted.map(({ event, reasoning }) =>
       `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${formatDate(event.date)}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
     );
     sections.push(`<h2 style="${S.h2}">Upcoming events for you</h2><ul style="${S.ul}">${items.join('')}</ul>`);
