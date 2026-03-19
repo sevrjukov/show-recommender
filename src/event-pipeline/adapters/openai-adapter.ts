@@ -1,18 +1,21 @@
 import OpenAI from 'openai';
 import type { LLMAdapter } from './llm-adapter.js';
-import type { Event, MatchResult, MatchedEvent, UserPreferences } from '../types.js';
+import type { Event, MatchResult, MatchedEvent, Suggestion, UserPreferences } from '../types.js';
 
 const SYSTEM_PROMPT = `You are a music event matching assistant. Given a user's taste profile and a list of upcoming music events, identify which events the user would likely enjoy attending.
 
 Return ONLY a valid JSON object with this exact structure:
 {
   "matched": [{ "eventIndex": 0, "reasoning": "Brief 1-2 sentence explanation" }],
-  "suggestions": ["Artist or Composer Name"]
+  "suggestions": [{ "name": "Artist or Composer Name", "reasoning": "Brief explanation of why they match the user's taste, e.g. which genres or styles overlap" }]
 }
 
 Where:
 - "matched": zero-based indexes of events the user would enjoy, with reasoning
-- "suggestions": artist/composer names found in the events that are NOT in the user's preferences but are stylistically relevant — for the user to consider adding`;
+- "suggestions": artists/composers found in the events that are NOT in the user's preferences but are stylistically relevant — include a short reason why they fit the user's taste, for the user to consider adding
+
+HARD RULES:
+- If the user's profile contains an "exclude" list, NEVER include any event whose title, venue, or description contains any of those terms (case-insensitive match). This overrides all other criteria.`;
 
 /**
  * {@link LLMAdapter} implementation backed by the OpenAI Chat Completions API.
@@ -72,7 +75,7 @@ export class OpenAIAdapter implements LLMAdapter {
         });
 
         const raw = completion.choices[0]?.message?.content ?? '{}';
-        const parsed = JSON.parse(raw) as { matched?: { eventIndex: number; reasoning: string }[]; suggestions?: string[] };
+        const parsed = JSON.parse(raw) as { matched?: { eventIndex: number; reasoning: string }[]; suggestions?: { name: string; reasoning: string }[] };
 
         if (!Array.isArray(parsed.matched) || !Array.isArray(parsed.suggestions)) {
           throw new Error(`OpenAI response missing required fields. Raw: ${raw}`);
@@ -102,9 +105,9 @@ export class OpenAIAdapter implements LLMAdapter {
           })
           .map(m => ({ event: events[m.eventIndex]!, reasoning: m.reasoning }));
 
-        const suggestions = parsed.suggestions.filter(s => {
-          if (typeof s !== 'string') {
-            console.warn('[llm:openai] Ignoring non-string suggestion:', s);
+        const suggestions: Suggestion[] = parsed.suggestions.filter(s => {
+          if (typeof s?.name !== 'string' || typeof s?.reasoning !== 'string') {
+            console.warn('[llm:openai] Ignoring malformed suggestion:', s);
             return false;
           }
           return true;

@@ -14,7 +14,7 @@ const S = {
   li: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0;',
   liWarning: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #b45309;',
   a: 'color: #0066cc; text-decoration: none;',
-  em: 'color: #555; font-style: italic; font-size: 20px;',
+  em: 'color: #555; font-style: italic;',
   p: 'color: #555;',
 };
 
@@ -57,7 +57,9 @@ export function buildDigest(result: MatchResult, errors: SourceError[]): string 
 
   // --- Consider adding ---
   if (result.suggestions.length > 0) {
-    const items = result.suggestions.map(s => `<li style="${S.li}">${escapeHtml(s)}</li>`);
+    const items = result.suggestions.map(s =>
+      `<li style="${S.li}"><strong>${escapeHtml(s.name)}</strong><br><em style="${S.em}">${escapeHtml(s.reasoning)}</em></li>`
+    );
     sections.push(`<h2 style="${S.h2}">Consider adding to your preferences</h2><ul style="${S.ul}">${items.join('')}</ul>`);
   }
 

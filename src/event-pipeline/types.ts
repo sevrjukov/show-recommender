@@ -25,6 +25,7 @@ export interface UserPreferences {
   artists: string[];     // e.g. ["Evgeny Kissin", "Armin van Buuren"]
   composers: string[];   // e.g. ["Chopin", "Rachmaninov"]
   genres: string[];      // e.g. ["classical", "trance"]
+  exclude: string[];     // terms to never recommend — matched against title, venue, description (case-insensitive)
 }
 
 /**
@@ -39,9 +40,14 @@ export interface MatchedEvent {
 /**
  * The full result returned by the LLM matching step.
  */
+export interface Suggestion {
+  name: string;      // artist or composer name
+  reasoning: string; // why it matches the user's taste, e.g. "often plays jazz fusion you enjoy"
+}
+
 export interface MatchResult {
   matched: MatchedEvent[];
-  suggestions: string[]; // artist/composer names LLM found relevant but not in preferences
+  suggestions: Suggestion[];
 }
 
 /**

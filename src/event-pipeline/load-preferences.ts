@@ -41,8 +41,13 @@ export async function loadPreferences(s3: S3Client, bucket: string): Promise<Use
   if (!isStringArray(p['artists']) || !isStringArray(p['composers']) || !isStringArray(p['genres'])) {
     throw new Error('user-preferences.json is malformed: artists, composers, and genres must contain only strings');
   }
+  // exclude is optional for backward compatibility; default to empty array
+  const excludeRaw = p['exclude'] ?? [];
+  if (!Array.isArray(excludeRaw) || !isStringArray(excludeRaw)) {
+    throw new Error('user-preferences.json is malformed: exclude must be an array of strings');
+  }
 
-  const prefs = p as unknown as UserPreferences;
-  console.log(`[preferences] Loaded: ${prefs.artists.length} artists, ${prefs.composers.length} composers, ${prefs.genres.length} genres`);
+  const prefs: UserPreferences = { ...(p as unknown as UserPreferences), exclude: excludeRaw };
+  console.log(`[preferences] Loaded: ${prefs.artists.length} artists, ${prefs.composers.length} composers, ${prefs.genres.length} genres, ${prefs.exclude.length} exclude terms`);
   return prefs;
 }

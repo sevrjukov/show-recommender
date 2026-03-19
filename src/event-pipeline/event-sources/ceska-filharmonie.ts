@@ -8,8 +8,8 @@ const REQUEST_DELAY_MS = 250;
 const MAX_LISTING_PAGES = 10;
 const DETAIL_CONCURRENCY = 5; // parallel detail fetches per batch
 
-// Event types to include; all others (Workshop, Education programs, etc.) are excluded
-const INCLUDE_EVENT_TYPES = new Set(['Concert', 'Dress rehearsal', 'Annotated concert']);
+// Event types to explicitly exclude; everything else (including unrecognized types) passes through
+const EXCLUDE_EVENT_TYPES = new Set(['Workshop', 'Education programs']);
 // Ordered most-specific first — prevents 'Concert' matching inside 'Annotated concert'
 const KNOWN_EVENT_TYPES = [
   'Dress rehearsal',
@@ -49,7 +49,7 @@ export class CeskaFilharmonieSource implements EventSource {
     const allCards = await this.scrapeAllListingPages();
     console.log(`[ceska-filharmonie] Listing: ${allCards.length} events found`);
 
-    const filtered = allCards.filter(c => INCLUDE_EVENT_TYPES.has(c.eventType));
+    const filtered = allCards.filter(c => !EXCLUDE_EVENT_TYPES.has(c.eventType));
     console.log(`[ceska-filharmonie] After type filter: ${filtered.length} events (${allCards.length - filtered.length} excluded)`);
 
     const events: Event[] = [];
@@ -168,7 +168,7 @@ async function scrapeListingPage(page: number): Promise<CfCard[]> {
       }
     }
     if (!eventType) {
-      console.warn(`[ceska-filharmonie] Unrecognized event type for "${title}" — excluding from pipeline`);
+      console.warn(`[ceska-filharmonie] Unrecognized event type for "${title}" — including as unknown type`);
       eventType = 'Unknown';
     }
 

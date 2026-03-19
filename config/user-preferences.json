@@ -101,6 +101,11 @@
     "Hans Zimmer",
     "John Williams"
   ],
+  "exclude": [
+    "opera",
+    "theatre",
+    "purely vocal performances"
+  ],
   "genres": [
     "classical instrumental",
     "classical piano",
