@@ -62,7 +62,7 @@ export class RecommenderAppStack extends cdk.Stack {
     // --- EventBridge cron schedules ---
 
     new events.Rule(this, 'EventPipelineSchedule', {
-      schedule: events.Schedule.expression('cron(0 7 ? * MON *)'), // weekly, Mondays 07:00 UTC
+      schedule: events.Schedule.expression('cron(0 9 ? * FRI *)'), // weekly, Fridays 10:00 CET (09:00 UTC)
       targets: [new targets.LambdaFunction(eventPipelineFn, {
         retryAttempts: 2,
         maxEventAge: cdk.Duration.hours(2),
