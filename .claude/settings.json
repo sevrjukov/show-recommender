@@ -31,7 +31,8 @@
       "Bash(curl -sL \"https://www.elbphilharmonie.de/en/whats-on/lucas-arthur-jussen-alexej-gerassimez-emil-kuyumcuyan/23117\" -H \"User-Agent: Mozilla/5.0\")",
       "Bash(npx cdk:*)",
       "Bash(npm run:*)",
-      "Read(//dev/**)"
+      "Read(//dev/**)",
+      "Bash(node -e \"const n = require\\(''@types/node/package.json''\\); console.log\\(n.version\\)\")"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"
