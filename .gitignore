@@ -1,3 +1,4 @@
+prod.env.properties
 node_modules/
 cdk.out/
 *.js

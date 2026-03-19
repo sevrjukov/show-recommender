@@ -26,10 +26,13 @@ export class RecommenderAppStack extends cdk.Stack {
     const eventPipelineFn = new NodejsFunction(this, 'EventPipelineFn', {
       functionName: 'event-pipeline',
       entry: path.join(__dirname, '../src/event-pipeline/index.ts'),
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       architecture: lambda.Architecture.ARM_64,
       memorySize: 512,
-      environment: { BUCKET_NAME: bucketName },
+      environment: {
+        BUCKET_NAME: bucketName,
+        OPENAI_API_KEY: this.node.getContext('openaiKey'),
+      },
     });
 
     // --- IAM: S3 object-level access ---
