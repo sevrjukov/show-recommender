@@ -10,7 +10,7 @@ import type { Event } from './types.js';
  * adjacent field values (e.g. `"foo|bar"` vs `"foo|b"` + `"ar"`).
  *
  * The same key is used by {@link deduplicateEvents} (cross-source dedup) and by
- * `exclude-sent.ts` (already-sent filtering), so both operations stay consistent.
+ * `exclude-evaluated.ts` (already-evaluated filtering), so both operations stay consistent.
  *
  * @param event - The event to key.
  * @returns 64-character lowercase hex SHA-256 digest.

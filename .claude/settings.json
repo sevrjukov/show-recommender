@@ -30,7 +30,8 @@
       "Bash(curl -sL \"https://d3c80vss50ue25.cloudfront.net/static/js/build/booking-list-page.min.5b4653f52d14.js\" -H \"User-Agent: Mozilla/5.0\")",
       "Bash(curl -sL \"https://www.elbphilharmonie.de/en/whats-on/lucas-arthur-jussen-alexej-gerassimez-emil-kuyumcuyan/23117\" -H \"User-Agent: Mozilla/5.0\")",
       "Bash(npx cdk:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Read(//dev/**)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

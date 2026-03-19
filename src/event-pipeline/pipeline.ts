@@ -5,7 +5,7 @@ import type { EventSource, PipelineResult } from './types.js';
 import { loadPreferences } from './load-preferences.js';
 import { fetchAllEvents } from './fetch-events.js';
 import { deduplicateEvents } from './dedup.js';
-import { loadSentKeys, excludeSentEvents, saveSentKeys } from './exclude-sent.js';
+import { loadEvaluatedKeys, excludeEvaluatedEvents, saveEvaluatedKeys } from './exclude-evaluated.js';
 import { matchEvents } from './llm-match.js';
 import { buildDigest } from './digest-builder.js';
 import { sendDigestEmail } from './send-email.js';
@@ -41,7 +41,7 @@ export interface PipelineDeps {
  * 2. Fetch events from all registered sources concurrently — individual source
  *    failures are non-fatal and surface as digest warnings.
  * 3. Deduplicate the aggregated event list across sources.
- * 4. Load already-sent dedup keys from S3 and filter out previously-sent events.
+ * 4. Load already-evaluated dedup keys from S3 and filter out previously-evaluated events.
  * 5. Run LLM matching against user preferences.
  * 6. Build the HTML digest from matches, suggestions, and any source errors.
  * 7. Send the digest via SES.
@@ -65,9 +65,9 @@ export async function runPipeline(deps: PipelineDeps): Promise<PipelineResult> {
   // 3. Deduplicate across sources — [dedup] log emitted by deduplicateEvents
   const uniqueEvents = deduplicateEvents(rawEvents);
 
-  // 4. Load already-sent keys and filter — [exclude-sent] logs emitted by loadSentKeys and excludeSentEvents
-  const sentKeys = await loadSentKeys(s3, bucketName);
-  const newEvents = excludeSentEvents(uniqueEvents, sentKeys);
+  // 4. Load already-evaluated keys and filter — [exclude-evaluated] logs emitted by loadEvaluatedKeys and excludeEvaluatedEvents
+  const evaluatedKeys = await loadEvaluatedKeys(s3, bucketName);
+  const newEvents = excludeEvaluatedEvents(uniqueEvents, evaluatedKeys);
 
   // 5. LLM matching
   const matchResult = await matchEvents(llmAdapter, preferences, newEvents);
@@ -75,11 +75,11 @@ export async function runPipeline(deps: PipelineDeps): Promise<PipelineResult> {
   // 6. Build digest HTML
   const html = buildDigest(matchResult, fetchErrors);
 
-  // 7. Send email (before persisting — if send fails, events are not marked sent and will retry next week)
+  // 7. Send email (before persisting — if send fails, events are not marked evaluated and will retry next week)
   await sendDigestEmail(ses, senderEmail, recipientEmail, html);
 
-  // 8. Persist matched event keys
-  await saveSentKeys(s3, bucketName, sentKeys, matchResult.matched.map(m => m.event));
+  // 8. Persist all evaluated event keys (matched + rejected) to prevent unbounded re-evaluation
+  await saveEvaluatedKeys(s3, bucketName, evaluatedKeys, newEvents);
 
   const result: PipelineResult = {
     matchedCount: matchResult.matched.length,

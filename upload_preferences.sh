@@ -26,4 +26,11 @@ aws s3 cp "$LOCAL_FILE" "s3://${BUCKET}/${S3_KEY}" \
   --content-type application/json \
   --profile "$AWS_PROFILE"
 
+# Clear evaluated keys so all events are re-evaluated against the new preferences
+EVALUATED_KEY="data/events-evaluated.json"
+echo "Clearing s3://${BUCKET}/${EVALUATED_KEY}"
+echo '[]' | aws s3 cp - "s3://${BUCKET}/${EVALUATED_KEY}" \
+  --content-type application/json \
+  --profile "$AWS_PROFILE"
+
 echo "Done."

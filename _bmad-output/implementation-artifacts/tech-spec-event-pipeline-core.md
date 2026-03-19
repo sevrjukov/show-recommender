@@ -15,7 +15,7 @@ files_to_create:
   - 'src/event-pipeline/types.ts'
   - 'src/event-pipeline/fetch-events.ts'
   - 'src/event-pipeline/dedup.ts'
-  - 'src/event-pipeline/exclude-sent.ts'
+  - 'src/event-pipeline/exclude-evaluated.ts'
   - 'src/event-pipeline/llm-match.ts'
   - 'src/event-pipeline/load-preferences.ts'
   - 'src/event-pipeline/adapters/llm-adapter.ts'
@@ -56,11 +56,11 @@ Implement the pipeline as independent TypeScript modules under `src/event-pipeli
 - `LLMAdapter` interface (`src/event-pipeline/adapters/llm-adapter.ts`) + `OpenAIAdapter` implementation (`src/event-pipeline/adapters/openai-adapter.ts`) using GPT-4o, model configurable via `OPENAI_MODEL` env var
 - Fetch orchestrator (`src/event-pipeline/fetch-events.ts`): accepts array of `EventSource` instances, calls each, aggregates results, continues on individual source failure (collects errors)
 - Dedup module (`src/event-pipeline/dedup.ts`): hash-based dedup using `hash(normalised_date + normalised_venue + normalised_title)`
-- Exclude-already-sent module (`src/event-pipeline/exclude-sent.ts`): reads `data/events-sent.json` from S3, filters out events whose dedup key is already present
+- Exclude-already-evaluated module (`src/event-pipeline/exclude-evaluated.ts`): reads `data/events-evaluated.json` from S3, filters out events whose dedup key is already present; persists all evaluated events (matched + rejected) after each run to prevent unbounded LLM re-evaluation
 - LLM match module (`src/event-pipeline/llm-match.ts`): sends `user-preferences.json` + pre-filtered events to LLM adapter, returns matched events with per-match reasoning + "consider adding" suggestions
 - Digest builder (`src/event-pipeline/digest-builder.ts`): assembles plain HTML email body from matches, "consider adding" section, and scraper failure warnings
 - SES email sender (`src/event-pipeline/send-email.ts`): sends digest via AWS SES using `SENDER_EMAIL` and `RECIPIENT_EMAIL` env vars
-- Pipeline orchestrator (`src/event-pipeline/pipeline.ts`): wires all modules together in sequence, persists newly matched events to `data/events-sent.json` in S3, returns `PipelineResult`
+- Pipeline orchestrator (`src/event-pipeline/pipeline.ts`): wires all modules together in sequence, persists all evaluated events (matched + rejected) to `data/events-evaluated.json` in S3, returns `PipelineResult`
 - Thin Lambda handler (`src/event-pipeline/index.ts`): reads config from S3, instantiates adapters, calls pipeline, logs result
 - `config/user-preferences.json`: sample file with a handful of artists, composers, and genres for local testing
 
@@ -79,7 +79,7 @@ Implement the pipeline as independent TypeScript modules under `src/event-pipeli
 - No `outDir` — esbuild handles Lambda bundling; `tsc` is type-check only.
 - Jest + ts-jest for testing. Config in `jest.config.js`. Tests live in `test/` root directory, matching `**/*.test.ts`. Pipeline module tests should go in `test/event-pipeline/`.
 - No database — S3 JSON only. `BUCKET_NAME` env var available to Lambda.
-- S3 key layout: `config/user-preferences.json` (read by pipeline), `data/events-sent.json` (append-only dedup log, read+write). No intermediate `events-raw.json` write for POC.
+- S3 key layout: `config/user-preferences.json` (read by pipeline), `data/events-evaluated.json` (append-only dedup log of all evaluated event keys, read+write). No intermediate `events-raw.json` write for POC.
 - Non-fatal source failure pattern: each `EventSource.fetch()` is called in a try/catch; errors are collected and passed through to the digest as a warnings section. Pipeline never throws on individual source failure.
 
 ### Files to Reference
@@ -100,11 +100,11 @@ Implement the pipeline as independent TypeScript modules under `src/event-pipeli
 - **OpenAI model** — model configurable via `OPENAI_MODEL` env var. No default — must be explicitly provided at deploy time (e.g. `gpt-4o`, `gpt-4o-mini`). Key via `OPENAI_API_KEY` env var. Both are set via CDK context at deploy time through `deploy.sh`.
 - **NodeNext `.js` import extensions** — all relative imports across `src/event-pipeline/` must use `.js` suffix. This is a TypeScript NodeNext requirement and is compatible with esbuild bundling.
 - **Dedup key** — `sha256(normalised_date + '|' + normalised_venue + '|' + normalised_title)` using Node.js built-in `crypto`. Normalise: ISO date string (`YYYY-MM-DD`), lowercase+trimmed venue name, lowercase+trimmed title/performer name.
-- **`events-sent.json`** — array of dedup key strings. On first run, if file doesn't exist in S3, treat as empty array (graceful init). After matching, append new hashes and write back atomically (read → merge → write).
+- **`events-evaluated.json`** — array of dedup key strings. On first run, if file doesn't exist in S3, treat as empty array (graceful init). After each run, persist all evaluated event keys (matched + rejected) and write back atomically (read → merge → write). Cleared by `upload_preferences.sh` on each preferences update so all events are re-evaluated against new preferences.
 - **AWS SDK packages** — `@aws-sdk/client-s3` and `@aws-sdk/client-ses` must be added as `dependencies` in `package.json` and will be bundled by esbuild. Do not rely on Lambda runtime's built-in SDK (esbuild bundles explicitly).
 - **SES env vars** — `SENDER_EMAIL` and `RECIPIENT_EMAIL` need to be added to `eventPipelineFn` in `lib/recommender-app-stack.ts`. Small CDK change — included in this spec's task list.
 - **Plain HTML digest** — simple string construction, no template library. `<h2>`, `<ul>`, `<li>` only. One entry per matched event: Artist/Title · Venue · Date · URL · LLM reasoning.
-- **Logging convention** — use `console.log` for informational steps, `console.warn` for recoverable issues (source errors), `console.error` for fatal errors. All log lines are prefixed with the module name in brackets: `[pipeline]`, `[fetch]`, `[dedup]`, `[exclude-sent]`, `[llm]`, `[email]`, `[handler]`. Never log the `OPENAI_API_KEY` value. Log counts at every stage boundary so CloudWatch Logs shows a clear trace of each run.
+- **Logging convention** — use `console.log` for informational steps, `console.warn` for recoverable issues (source errors), `console.error` for fatal errors. All log lines are prefixed with the module name in brackets: `[pipeline]`, `[fetch]`, `[dedup]`, `[exclude-evaluated]`, `[llm]`, `[email]`, `[handler]`. Never log the `OPENAI_API_KEY` value. Log counts at every stage boundary so CloudWatch Logs shows a clear trace of each run.
 
 ## Implementation Plan
 
@@ -391,59 +391,60 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [x] **Task 8: Create `src/event-pipeline/exclude-sent.ts`**
-  - File: `src/event-pipeline/exclude-sent.ts` (new)
-  - Action: Implement loading already-sent keys from S3 and filtering events:
+- [x] **Task 8: Create `src/event-pipeline/exclude-evaluated.ts`**
+  - File: `src/event-pipeline/exclude-evaluated.ts` (new)
+  - Action: Implement loading already-evaluated keys from S3 and filtering events:
 
     ```typescript
     import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
     import type { Event } from './types.js';
     import { computeDedupKey } from './dedup.js';
 
-    const SENT_KEY = 'data/events-sent.json';
+    const EVALUATED_KEY = 'data/events-evaluated.json';
 
-    export async function loadSentKeys(s3: S3Client, bucket: string): Promise<Set<string>> {
+    export async function loadEvaluatedKeys(s3: S3Client, bucket: string): Promise<Set<string>> {
       try {
-        const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: SENT_KEY }));
+        const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: EVALUATED_KEY }));
         const body = await response.Body?.transformToString() ?? '[]';
         const keys = JSON.parse(body) as string[];
-        const sentSet = new Set(keys);
-        console.log(`[exclude-sent] Loaded ${sentSet.size} sent keys`);
-        return sentSet;
+        const evaluatedSet = new Set(keys);
+        console.log(`[exclude-evaluated] Loaded ${evaluatedSet.size} evaluated keys`);
+        return evaluatedSet;
       } catch (err: unknown) {
         const code = (err as { name?: string }).name;
         if (code === 'NoSuchKey') {
-          console.log('[exclude-sent] events-sent.json not found, starting fresh');
+          console.log('[exclude-evaluated] events-evaluated.json not found, starting fresh');
           return new Set<string>();
         }
         throw err;
       }
     }
 
-    export function excludeSentEvents(events: Event[], sentKeys: Set<string>): Event[] {
-      const result = events.filter(event => !sentKeys.has(computeDedupKey(event)));
-      console.log(`[exclude-sent] ${events.length} → ${result.length} new events (${events.length - result.length} already sent)`);
+    export function excludeEvaluatedEvents(events: Event[], evaluatedKeys: Set<string>): Event[] {
+      const result = events.filter(event => !evaluatedKeys.has(computeDedupKey(event)));
+      console.log(`[exclude-evaluated] ${events.length} → ${result.length} new events (${events.length - result.length} already evaluated)`);
       return result;
     }
 
-    export async function saveSentKeys(s3: S3Client, bucket: string, existingKeys: Set<string>, newEvents: Event[]): Promise<void> {
-      const newKeys = newEvents.map(computeDedupKey);
+    export async function saveEvaluatedKeys(s3: S3Client, bucket: string, existingKeys: Set<string>, evaluatedEvents: Event[]): Promise<void> {
+      const newKeys = evaluatedEvents.map(computeDedupKey);
       const merged = Array.from(new Set([...existingKeys, ...newKeys]));
       await s3.send(new PutObjectCommand({
         Bucket: bucket,
-        Key: SENT_KEY,
+        Key: EVALUATED_KEY,
         Body: JSON.stringify(merged),
         ContentType: 'application/json',
       }));
+      console.log(`[exclude-evaluated] Saved ${merged.length} total keys to S3`);
     }
     ```
 
-  - Notes: `loadSentKeys` handles first-run gracefully (file absent → empty Set). `saveSentKeys` merges existing keys with newly matched event keys before writing. Only matched events (those appearing in the digest) are passed to `saveSentKeys` — unmatched events are not logged and will be re-evaluated next week.
+  - Notes: `loadEvaluatedKeys` handles first-run gracefully (file absent → empty Set). `saveEvaluatedKeys` merges existing keys with the dedup keys of all events evaluated this run (matched + rejected) — this prevents unbounded LLM re-evaluation of events that will never match current preferences (IG-2 fix). Called after email send; if email fails, the same events are re-evaluated next run (intentional retry semantics).
   - Logging:
-    - `loadSentKeys` on NoSuchKey: `[exclude-sent] events-sent.json not found, starting fresh`
-    - `loadSentKeys` on success: `[exclude-sent] Loaded ${keys.size} sent keys`
-    - After `excludeSentEvents`: `[exclude-sent] ${input.length} → ${output.length} new events (${input.length - output.length} already sent)`
-    - `saveSentKeys` after write: `[exclude-sent] Saved ${merged.length} total keys to S3`
+    - `loadEvaluatedKeys` on NoSuchKey: `[exclude-evaluated] events-evaluated.json not found, starting fresh`
+    - `loadEvaluatedKeys` on success: `[exclude-evaluated] Loaded ${keys.size} evaluated keys`
+    - After `excludeEvaluatedEvents`: `[exclude-evaluated] ${input.length} → ${output.length} new events (${input.length - output.length} already evaluated)`
+    - `saveEvaluatedKeys` after write: `[exclude-evaluated] Saved ${merged.length} total keys to S3`
 
 ---
 
@@ -621,7 +622,7 @@ Tasks are ordered by dependency — lowest-level modules first.
     import { loadPreferences } from './load-preferences.js';
     import { fetchAllEvents } from './fetch-events.js';
     import { deduplicateEvents } from './dedup.js';
-    import { loadSentKeys, excludeSentEvents, saveSentKeys } from './exclude-sent.js';
+    import { loadEvaluatedKeys, excludeEvaluatedEvents, saveEvaluatedKeys } from './exclude-evaluated.js';
     import { matchEvents } from './llm-match.js';
     import { buildDigest } from './digest-builder.js';
     import { sendDigestEmail } from './send-email.js';
@@ -649,9 +650,9 @@ Tasks are ordered by dependency — lowest-level modules first.
       // 3. Deduplicate across sources — [dedup] log emitted by deduplicateEvents
       const uniqueEvents = deduplicateEvents(rawEvents);
 
-      // 4. Load already-sent keys and filter — [exclude-sent] logs emitted by loadSentKeys and excludeSentEvents
-      const sentKeys = await loadSentKeys(s3, bucketName);
-      const newEvents = excludeSentEvents(uniqueEvents, sentKeys);
+      // 4. Load already-evaluated keys and filter — [exclude-evaluated] logs emitted by loadEvaluatedKeys and excludeEvaluatedEvents
+      const evaluatedKeys = await loadEvaluatedKeys(s3, bucketName);
+      const newEvents = excludeEvaluatedEvents(uniqueEvents, evaluatedKeys);
 
       // 5. LLM matching
       const matchResult = await matchEvents(llmAdapter, preferences, newEvents);
@@ -662,8 +663,8 @@ Tasks are ordered by dependency — lowest-level modules first.
       // 7. Send email (before persisting — if send fails, events are not marked sent and will retry next week)
       await sendDigestEmail(ses, senderEmail, recipientEmail, html);
 
-      // 8. Persist matched event keys
-      await saveSentKeys(s3, bucketName, sentKeys, matchResult.matched.map(m => m.event));
+      // 8. Persist all evaluated event keys (matched + rejected) to prevent unbounded re-evaluation
+      await saveEvaluatedKeys(s3, bucketName, evaluatedKeys, newEvents);
 
       const result: PipelineResult = {
         matchedCount: matchResult.matched.length,
@@ -675,16 +676,16 @@ Tasks are ordered by dependency — lowest-level modules first.
     }
     ```
 
-  - Notes: Steps 1–8 are sequential and intentional. Preferences loading (step 1) is delegated to `loadPreferences` — `pipeline.ts` makes no direct S3 calls. Email is sent before persisting (step 7 before 8) — if send fails, events are not marked sent and will re-appear next run (correct failure mode). LLM and SES failures are fatal and surface via CloudWatch alarm.
+  - Notes: Steps 1–8 are sequential and intentional. Preferences loading (step 1) is delegated to `loadPreferences` — `pipeline.ts` makes no direct S3 calls. Email is sent before persisting (step 7 before 8) — if send fails, events are not marked evaluated and will re-appear next run (correct failure mode). LLM and SES failures are fatal and surface via CloudWatch alarm.
   - Logging:
     - Start: `[pipeline] Starting pipeline`
     - After step 1: `[pipeline] Preferences loaded: ${artists.length} artists, ${composers.length} composers, ${genres.length} genres`
     - After step 2: delegated to `[fetch]` module logs
     - After step 3: delegated to `[dedup]` module logs
-    - After step 4: delegated to `[exclude-sent]` module logs
+    - After step 4: delegated to `[exclude-evaluated]` module logs
     - After step 5: delegated to `[llm]` module logs
     - After step 7: delegated to `[email]` module logs
-    - After step 8: delegated to `[exclude-sent]` saveSentKeys log
+    - After step 8: delegated to `[exclude-evaluated]` saveEvaluatedKeys log
     - End: `[pipeline] Complete — matched: ${matchedCount}, suggestions: ${suggestionsCount}, sourceErrors: ${sourceErrors.length}`
 
 ---
@@ -832,15 +833,15 @@ Tasks are ordered by dependency — lowest-level modules first.
   - When: `fetchAllEvents([goodSource, badSource])` is called
   - Then: returns `{ events: [event1], errors: [{ sourceId: badSource.id, error: 'network timeout' }] }`
 
-- [ ] **AC7 — `loadSentKeys` returns empty Set when file absent**
-  - Given: `data/events-sent.json` does not exist in the S3 bucket (S3 returns `NoSuchKey`)
-  - When: `loadSentKeys(s3, bucket)` is called
+- [ ] **AC7 — `loadEvaluatedKeys` returns empty Set when file absent**
+  - Given: `data/events-evaluated.json` does not exist in the S3 bucket (S3 returns `NoSuchKey`)
+  - When: `loadEvaluatedKeys(s3, bucket)` is called
   - Then: returns an empty `Set<string>` without throwing
 
-- [ ] **AC8 — `excludeSentEvents` filters previously sent events**
-  - Given: three events; `sentKeys` contains the dedup key of the second event
-  - When: `excludeSentEvents([e1, e2, e3], sentKeys)` is called
-  - Then: returns `[e1, e3]` — the already-sent event is excluded
+- [ ] **AC8 — `excludeEvaluatedEvents` filters previously evaluated events**
+  - Given: three events; `evaluatedKeys` contains the dedup key of the second event
+  - When: `excludeEvaluatedEvents([e1, e2, e3], evaluatedKeys)` is called
+  - Then: returns `[e1, e3]` — the already-evaluated event is excluded
 
 - [ ] **AC9 — `buildDigest` includes all sections when all data present**
   - Given: `matchResult` with two matched events and one suggestion; `errors` with one source error
@@ -862,15 +863,15 @@ Tasks are ordered by dependency — lowest-level modules first.
   - When: `openAIAdapter.matchEvents(prefs, [event0, event1, event2])` resolves
   - Then: `matched[0].event` equals `event1` and `matched[0].reasoning` equals `'Great match'`
 
-- [ ] **AC13 — `saveSentKeys` merges existing and new keys**
-  - Given: S3 `events-sent.json` contains `["hash-a"]`; two new matched events with keys `"hash-b"` and `"hash-c"`
-  - When: `saveSentKeys(s3, bucket, new Set(['hash-a']), [eventB, eventC])` is called
+- [ ] **AC13 — `saveEvaluatedKeys` merges existing and all evaluated keys**
+  - Given: S3 `events-evaluated.json` contains `["hash-a"]`; two events (one matched, one rejected) with keys `"hash-b"` and `"hash-c"` were evaluated this run
+  - When: `saveEvaluatedKeys(s3, bucket, new Set(['hash-a']), [eventB, eventC])` is called
   - Then: S3 is written with a JSON array containing all three keys: `["hash-a", "hash-b", "hash-c"]` (order may vary)
 
 - [ ] **AC14 — Pipeline completes and sends email even with zero matching events**
   - Given: `sources: []` (no event sources registered), valid user-preferences.json in S3, SES verified
   - When: `runPipeline(deps)` completes
-  - Then: `matchedCount === 0`, email is sent (SES call made), `events-sent.json` is written (empty merge), no exception thrown
+  - Then: `matchedCount === 0`, email is sent (SES call made), `events-evaluated.json` is written (empty merge), no exception thrown
 
 ---
 
@@ -889,7 +890,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 Unit tests are out of scope for this spec but the module design enables them:
 - `dedup.ts` — pure functions, trivially unit-testable
 - `fetch-events.ts` — inject mock `EventSource` array
-- `exclude-sent.ts` — inject mock `S3Client` (or use `@aws-sdk/lib-storage` mock); `excludeSentEvents` is a pure function
+- `exclude-evaluated.ts` — inject mock `S3Client`; `excludeEvaluatedEvents` is a pure function
 - `llm-match.ts` — inject mock `LLMAdapter`
 - `digest-builder.ts` — pure function, test with fixture data
 - `pipeline.ts` — inject all deps; full integration test with mock S3/SES/LLMAdapter
