@@ -2,14 +2,15 @@
 title: 'Event Pipeline — Core Business Logic'
 slug: 'event-pipeline-core'
 created: '2026-03-18'
-status: 'ready-for-dev'
-stepsCompleted: [1, 2, 3, 4]
+status: 'implemented'
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 tech_stack: ['TypeScript 5.9 (strict, NodeNext modules)', 'Node.js 20 LTS', 'openai SDK', '@aws-sdk/client-s3', '@aws-sdk/client-ses', 'Jest + ts-jest']
 files_to_modify:
   - 'src/event-pipeline/index.ts'
   - 'package.json'
   - 'lib/recommender-app-stack.ts'
   - 'jest.config.js'
+  - 'deploy.sh'
 files_to_create:
   - 'src/event-pipeline/types.ts'
   - 'src/event-pipeline/fetch-events.ts'
@@ -96,7 +97,7 @@ Implement the pipeline as independent TypeScript modules under `src/event-pipeli
 
 - **`EventSource` interface** — all event sources implement `fetch(): Promise<Event[]>`. Fetch orchestrator takes `EventSource[]`. Adding a new source = new class, zero pipeline changes.
 - **`LLMAdapter` interface** — `matchEvents(prefs: UserPreferences, events: Event[]): Promise<MatchResult>`. `OpenAIAdapter` is first implementation. Switching provider = new class, no pipeline changes.
-- **OpenAI GPT-4o** — model configurable via `OPENAI_MODEL` env var (default `'gpt-4o'`). Key via `OPENAI_API_KEY` env var. Both must be added to Lambda env in CDK (key preferably via Secrets Manager in production; for POC, set manually in Lambda console — never commit to CDK code).
+- **OpenAI model** — model configurable via `OPENAI_MODEL` env var. No default — must be explicitly provided at deploy time (e.g. `gpt-4o`, `gpt-4o-mini`). Key via `OPENAI_API_KEY` env var. Both are set via CDK context at deploy time through `deploy.sh`.
 - **NodeNext `.js` import extensions** — all relative imports across `src/event-pipeline/` must use `.js` suffix. This is a TypeScript NodeNext requirement and is compatible with esbuild bundling.
 - **Dedup key** — `sha256(normalised_date + '|' + normalised_venue + '|' + normalised_title)` using Node.js built-in `crypto`. Normalise: ISO date string (`YYYY-MM-DD`), lowercase+trimmed venue name, lowercase+trimmed title/performer name.
 - **`events-sent.json`** — array of dedup key strings. On first run, if file doesn't exist in S3, treat as empty array (graceful init). After matching, append new hashes and write back atomically (read → merge → write).
@@ -113,7 +114,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 1: Install npm dependencies and fix build script**
+- [x] **Task 1: Install npm dependencies and fix build script**
   - File: `package.json`
   - Action:
     1. Run `npm install openai @aws-sdk/client-s3 @aws-sdk/client-ses` — adds to `dependencies`
@@ -122,7 +123,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 2: Create `config/user-preferences.json`**
+- [x] **Task 2: Create `config/user-preferences.json`**
   - File: `config/user-preferences.json` (new, at repo root)
   - Action: Create with the following content — a handful of sample entries for local development and manual upload to S3:
     ```json
@@ -136,7 +137,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 3: Create `src/event-pipeline/types.ts`**
+- [x] **Task 3: Create `src/event-pipeline/types.ts`**
   - File: `src/event-pipeline/types.ts` (new)
   - Action: Define all shared TypeScript interfaces used across pipeline modules:
 
@@ -195,7 +196,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 4: Create `src/event-pipeline/adapters/llm-adapter.ts`**
+- [x] **Task 4: Create `src/event-pipeline/adapters/llm-adapter.ts`**
   - File: `src/event-pipeline/adapters/llm-adapter.ts` (new)
   - Action: Define the `LLMAdapter` interface:
 
@@ -211,7 +212,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 5: Create `src/event-pipeline/adapters/openai-adapter.ts`**
+- [x] **Task 5: Create `src/event-pipeline/adapters/openai-adapter.ts`**
   - File: `src/event-pipeline/adapters/openai-adapter.ts` (new)
   - Action: Implement `OpenAIAdapter` using the `openai` npm SDK:
 
@@ -236,7 +237,7 @@ Tasks are ordered by dependency — lowest-level modules first.
       private readonly client: OpenAI;
       private readonly model: string;
 
-      constructor(apiKey: string, model: string = 'gpt-4o') {
+      constructor(apiKey: string, model: string) {
         this.client = new OpenAI({ apiKey });
         this.model = model;
       }
@@ -303,7 +304,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 6: Create `src/event-pipeline/dedup.ts`**
+- [x] **Task 6: Create `src/event-pipeline/dedup.ts`**
   - File: `src/event-pipeline/dedup.ts` (new)
   - Action: Implement dedup key computation and cross-source deduplication:
 
@@ -337,7 +338,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 7: Create `src/event-pipeline/fetch-events.ts`**
+- [x] **Task 7: Create `src/event-pipeline/fetch-events.ts`**
   - File: `src/event-pipeline/fetch-events.ts` (new)
   - Action: Implement the fetch orchestrator that calls all registered sources, collects results and errors:
 
@@ -390,7 +391,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 8: Create `src/event-pipeline/exclude-sent.ts`**
+- [x] **Task 8: Create `src/event-pipeline/exclude-sent.ts`**
   - File: `src/event-pipeline/exclude-sent.ts` (new)
   - Action: Implement loading already-sent keys from S3 and filtering events:
 
@@ -446,7 +447,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 9: Create `src/event-pipeline/llm-match.ts`**
+- [x] **Task 9: Create `src/event-pipeline/llm-match.ts`**
   - File: `src/event-pipeline/llm-match.ts` (new)
   - Action: Thin wrapper delegating to the `LLMAdapter`:
 
@@ -474,7 +475,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 10: Create `src/event-pipeline/digest-builder.ts`**
+- [x] **Task 10: Create `src/event-pipeline/digest-builder.ts`**
   - File: `src/event-pipeline/digest-builder.ts` (new)
   - Action: Build an HTML email body using **inline styles** (required for email client compatibility — Gmail, Outlook, and most clients strip `<style>` blocks):
 
@@ -536,7 +537,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 11: Create `src/event-pipeline/send-email.ts`**
+- [x] **Task 11: Create `src/event-pipeline/send-email.ts`**
   - File: `src/event-pipeline/send-email.ts` (new)
   - Action: Send the HTML digest via AWS SES:
 
@@ -568,7 +569,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 12: Create `src/event-pipeline/load-preferences.ts`**
+- [x] **Task 12: Create `src/event-pipeline/load-preferences.ts`**
   - File: `src/event-pipeline/load-preferences.ts` (new)
   - Action: Load and validate `user-preferences.json` from S3 — single-responsibility module, keeps `pipeline.ts` free of direct S3 calls:
 
@@ -608,7 +609,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 13: Create `src/event-pipeline/pipeline.ts`**
+- [x] **Task 13: Create `src/event-pipeline/pipeline.ts`**
   - File: `src/event-pipeline/pipeline.ts` (new)
   - Action: Orchestrate all modules in sequence:
 
@@ -688,7 +689,7 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 14: Update `src/event-pipeline/index.ts`**
+- [x] **Task 14: Update `src/event-pipeline/index.ts`**
   - File: `src/event-pipeline/index.ts` (replace placeholder)
   - Action: Replace the placeholder with a thin Lambda handler that reads env vars, instantiates adapters, and delegates to `runPipeline`:
 
@@ -703,7 +704,7 @@ Tasks are ordered by dependency — lowest-level modules first.
       const senderEmail = process.env['SENDER_EMAIL'] ?? '';
       const recipientEmail = process.env['RECIPIENT_EMAIL'] ?? '';
       const openaiApiKey = process.env['OPENAI_API_KEY'] ?? '';
-      const openaiModel = process.env['OPENAI_MODEL'] ?? 'gpt-4o';
+      const openaiModel = process.env['OPENAI_MODEL'] ?? '';
 
       const region = process.env['AWS_REGION'] ?? 'eu-central-1';
 
@@ -730,9 +731,9 @@ Tasks are ordered by dependency — lowest-level modules first.
 
 ---
 
-- [ ] **Task 15: Update `lib/recommender-app-stack.ts`**
-  - File: `lib/recommender-app-stack.ts`
-  - Action: Two changes to the `eventPipelineFn` `NodejsFunction` construct:
+- [x] **Task 15: Update `lib/recommender-app-stack.ts` and `deploy.sh`**
+  - Files: `lib/recommender-app-stack.ts`, `deploy.sh`
+  - Action: Three changes:
 
     **1. Add env vars** — change:
     ```typescript
@@ -742,22 +743,31 @@ Tasks are ordered by dependency — lowest-level modules first.
     ```typescript
     environment: {
       BUCKET_NAME: bucketName,
-      SENDER_EMAIL: this.node.tryGetContext('senderEmail') ?? '',
-      RECIPIENT_EMAIL: this.node.tryGetContext('recipientEmail') ?? '',
-      OPENAI_MODEL: this.node.tryGetContext('openaiModel') ?? 'gpt-4o',
+      SENDER_EMAIL: this.node.getContext('senderEmail'),
+      RECIPIENT_EMAIL: this.node.getContext('recipientEmail'),
+      OPENAI_MODEL: this.node.getContext('openaiModel'),
     },
     ```
+    All four vars use `getContext` (not `tryGetContext`) — CDK will throw at `cdk synth` time if any are absent. This is intentional: misconfigured deployments must fail fast.
 
     **2. Add Lambda timeout** — add `timeout` property to the same `NodejsFunction` props:
     ```typescript
     timeout: cdk.Duration.seconds(60),
     ```
 
-  - Notes: The default Lambda timeout is 3 seconds — the pipeline makes sequential network calls to S3 (×2), OpenAI, and SES, which routinely exceed this. 60 seconds is a safe ceiling for a weekly job. `OPENAI_API_KEY` is intentionally NOT set via CDK — set it manually post-deploy via AWS console or `aws lambda update-function-configuration`. **Warning:** setting all env vars via CLI (`aws lambda update-function-configuration --environment "Variables={...}"`) replaces the entire env map — if you run this command, include ALL vars (BUCKET_NAME, SENDER_EMAIL, RECIPIENT_EMAIL, OPENAI_MODEL, OPENAI_API_KEY); a subsequent `cdk deploy` will re-apply CDK-managed vars and drop OPENAI_API_KEY, requiring the CLI command to be re-run. The three non-secret vars follow the existing `alertEmail` CDK context pattern: `cdk deploy -c senderEmail=you@example.com -c recipientEmail=you@example.com`.
+    **3. Update `deploy.sh`** — add `--sender-email`, `--recipient-email`, and `--openai-model` as required arguments following the same pattern as `--openai-key`. All five args must be provided; the script exits with usage if any are missing. Pass them as CDK context:
+    ```zsh
+    cdk deploy --all \
+      --profile "$AWS_PROFILE" \
+      --context "openaiKey=$OPENAI_KEY" \
+      --context "senderEmail=$SENDER_EMAIL" \
+      --context "recipientEmail=$RECIPIENT_EMAIL" \
+      --context "openaiModel=$OPENAI_MODEL"
+    ```
 
 ---
 
-- [ ] **Task 16: Fix `jest.config.js` for NodeNext module resolution**
+- [x] **Task 16: Fix `jest.config.js` for NodeNext module resolution**
   - File: `jest.config.js`
   - Action: Add `moduleNameMapper` to strip `.js` extensions at test-time. ts-jest resolves `.ts` sources but cannot resolve literal `.js` files — the mapper redirects `./foo.js` → `./foo` which ts-jest then finds as `./foo.ts`. Change:
     ```javascript
@@ -888,7 +898,7 @@ All tests go in `test/event-pipeline/` to mirror `src/event-pipeline/` structure
 
 ### Notes
 
-- **`OPENAI_API_KEY` delivery:** never add to CDK code. After `cdk deploy`, set via: `aws lambda update-function-configuration --function-name event-pipeline --environment "Variables={OPENAI_API_KEY=sk-...,BUCKET_NAME=...,SENDER_EMAIL=...,RECIPIENT_EMAIL=...,OPENAI_MODEL=gpt-4o}"`. Alternatively, set it manually in the Lambda console — this overwrites all env vars, so set all of them at once.
+
 - **SES verification prerequisite:** `SENDER_EMAIL` and `RECIPIENT_EMAIL` must both be verified in SES before the pipeline can send email. Do this manually in the AWS console (SES → Verified identities). SES sandbox mode limits sending to verified addresses only — sufficient for personal POC.
 - **First run behaviour:** With `sources: []` in `index.ts`, the pipeline fetches no events, calls LLM with an empty list (early-exits), builds a "no new events" digest, and sends it. This is intentional — it validates the full pipeline wiring (S3 reads, SES send) before any scrapers are added.
 - **Unit tests:** writing unit tests for pipeline modules is out of scope for this spec but should be done as a follow-up spec (`tech-spec-event-pipeline-tests.md`) before adding the first real `EventSource`. The module design (pure functions + injected deps) makes all modules straightforwardly testable.
