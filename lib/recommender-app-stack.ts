@@ -51,6 +51,13 @@ export class RecommenderAppStack extends cdk.Stack {
       resources: [`arn:aws:s3:::${bucketName}`],
     }));
 
+    // --- IAM: SES send access ---
+
+    eventPipelineFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ses:SendEmail'],
+      resources: ['*'],
+    }));
+
     // --- EventBridge cron schedules ---
 
     new events.Rule(this, 'EventPipelineSchedule', {

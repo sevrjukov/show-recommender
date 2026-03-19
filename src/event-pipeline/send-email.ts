@@ -28,7 +28,7 @@ export async function sendDigestEmail(
     Source: senderEmail,
     Destination: { ToAddresses: [recipientEmail] },
     Message: {
-      Subject: { Data: `Show Recommender Digest — ${now}`, Charset: 'UTF-8' },
+      Subject: { Data: `Weekly Shows Recommender — ${now}`, Charset: 'UTF-8' },
       Body: { Html: { Data: htmlBody, Charset: 'UTF-8' } },
     },
   }));

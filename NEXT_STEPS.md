@@ -3,7 +3,7 @@
 - solution redesign IG-2
 - create tech spec for event sources
 - implement event sources
-
+- setup AWS SES
 
 ## IG-2 Only matched events persisted to sent-keys; unmatched events re-evaluated forever
 
