@@ -41,12 +41,15 @@ export class RecommenderAppStack extends cdk.Stack {
 
     // --- IAM: S3 object-level access ---
 
-    const s3ObjectPolicy = new iam.PolicyStatement({
+    eventPipelineFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['s3:GetObject', 's3:PutObject'],
       resources: [`arn:aws:s3:::${bucketName}/*`],
-    });
+    }));
 
-    eventPipelineFn.addToRolePolicy(s3ObjectPolicy);
+    eventPipelineFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['s3:ListBucket'],
+      resources: [`arn:aws:s3:::${bucketName}`],
+    }));
 
     // --- EventBridge cron schedules ---
 
