@@ -1,5 +1,43 @@
 {
-  "artists": ["Evgeny Kissin", "Yuja Wang", "Armin van Buuren"],
-  "composers": ["Chopin", "Rachmaninov", "Beethoven", "Brahms"],
-  "genres": ["classical", "trance"]
+  "artists": [
+    "Evgeny Kissin",
+    "Yuja Wang",
+    "Maria João Pires",
+    "Yeol Eum Son",
+    "Armin van Buuren",
+    "Above And Beyond",
+    "Daniel Kandi",
+    "Rezident",
+    "Boom Jinx",
+    "Shpongle",
+    "Astral Projection",
+    "Rammstein",
+    "Limp Bizkit",
+    "Slipknot",
+    "Red Hot Chilli Peppers",
+    "Offspring",
+    "Adam Neely",
+    "Sungazer",
+    "Tiffany Poon",
+    "David Bruce",
+    "Angine de Poitrine"
+  ],
+  "composers": [
+    "Chopin",
+    "Rachmaninov",
+    "Beethoven",
+    "Brahms",
+    "Mozart",
+    "Tchaikovsky",
+    "Schumann"
+  ],
+  "genres": [
+    "classical",
+    "trance",
+    "house",
+    "deep house",
+    "jazz",
+    "nu metal",
+    "psytrance"
+  ]
 }
