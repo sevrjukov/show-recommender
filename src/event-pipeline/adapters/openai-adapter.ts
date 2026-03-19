@@ -81,18 +81,36 @@ export class OpenAIAdapter implements LLMAdapter {
         console.log(`[llm:openai] Response received, usage: ${JSON.stringify(completion.usage)}`);
         console.log(`[llm:openai] Parsed: ${parsed.matched.length} matched, ${parsed.suggestions.length} suggestions`);
 
+        const seenIndices = new Set<number>();
         const matched: MatchedEvent[] = parsed.matched
           .filter(m => {
+            if (typeof m.eventIndex !== 'number' || !Number.isInteger(m.eventIndex)) {
+              console.warn('[llm:openai] Ignoring non-integer eventIndex:', m.eventIndex);
+              return false;
+            }
             if (m.eventIndex < 0 || m.eventIndex >= events.length) {
               // Out-of-bounds index from the LLM — skip rather than throw so the rest of the response is used
               console.warn('[llm:openai] Ignoring out-of-bounds eventIndex:', m.eventIndex);
               return false;
             }
+            if (seenIndices.has(m.eventIndex)) {
+              console.warn('[llm:openai] Ignoring duplicate eventIndex:', m.eventIndex);
+              return false;
+            }
+            seenIndices.add(m.eventIndex);
             return true;
           })
           .map(m => ({ event: events[m.eventIndex]!, reasoning: m.reasoning }));
 
-        return { matched, suggestions: parsed.suggestions };
+        const suggestions = parsed.suggestions.filter(s => {
+          if (typeof s !== 'string') {
+            console.warn('[llm:openai] Ignoring non-string suggestion:', s);
+            return false;
+          }
+          return true;
+        });
+
+        return { matched, suggestions };
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
         console.warn(`[llm:openai] Attempt ${attempt}/${maxAttempts} failed:`, lastError.message);

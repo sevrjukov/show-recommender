@@ -18,12 +18,18 @@ import { runPipeline } from './pipeline.js';
  * - `OPENAI_MODEL`    — OpenAI model ID (e.g. `gpt-4o`, `gpt-4o-mini`).
  * - `AWS_REGION`      — Set automatically by the Lambda runtime.
  */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
 export const handler = async (): Promise<void> => {
-  const bucketName = process.env['BUCKET_NAME'] ?? '';
-  const senderEmail = process.env['SENDER_EMAIL'] ?? '';
-  const recipientEmail = process.env['RECIPIENT_EMAIL'] ?? '';
-  const openaiApiKey = process.env['OPENAI_API_KEY'] ?? '';
-  const openaiModel = process.env['OPENAI_MODEL'] ?? '';
+  const bucketName = requireEnv('BUCKET_NAME');
+  const senderEmail = requireEnv('SENDER_EMAIL');
+  const recipientEmail = requireEnv('RECIPIENT_EMAIL');
+  const openaiApiKey = requireEnv('OPENAI_API_KEY');
+  const openaiModel = requireEnv('OPENAI_MODEL');
 
   const region = process.env['AWS_REGION'] ?? 'eu-central-1';
 

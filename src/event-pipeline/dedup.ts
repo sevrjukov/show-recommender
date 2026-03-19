@@ -18,6 +18,9 @@ import type { Event } from './types.js';
 export function computeDedupKey(event: Event): string {
   // Slice to first 10 chars to normalise both YYYY-MM-DD and YYYY-MM-DDTHH:mm:ssZ formats
   const date = event.date.trim().slice(0, 10);
+  if (date.length < 10) {
+    console.warn(`[dedup] Event has short/malformed date "${event.date}" (sourceId=${event.sourceId}, title=${event.title})`);
+  }
   const venue = event.venue.toLowerCase().trim();
   const title = event.title.toLowerCase().trim();
   return createHash('sha256').update(`${date}|${venue}|${title}`).digest('hex');
