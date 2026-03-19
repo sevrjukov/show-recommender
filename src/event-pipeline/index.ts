@@ -2,6 +2,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { SESClient } from '@aws-sdk/client-ses';
 import { OpenAIAdapter } from './adapters/openai-adapter.js';
 import { runPipeline } from './pipeline.js';
+import { TicketmasterSource } from './event-sources/ticketmaster.js';
 
 /**
  * Lambda entry point for the event-pipeline function.
@@ -30,6 +31,7 @@ export const handler = async (): Promise<void> => {
   const recipientEmail = requireEnv('RECIPIENT_EMAIL');
   const openaiApiKey = requireEnv('OPENAI_API_KEY');
   const openaiModel = requireEnv('OPENAI_MODEL');
+  const ticketmasterApiKey = requireEnv('TICKETMASTER_API_KEY');
 
   const region = process.env['AWS_REGION'] ?? 'eu-central-1';
 
@@ -38,7 +40,7 @@ export const handler = async (): Promise<void> => {
 
   try {
     const result = await runPipeline({
-      sources: [],  // EventSource implementations added in subsequent specs
+      sources: [new TicketmasterSource(ticketmasterApiKey)],
       llmAdapter: new OpenAIAdapter(openaiApiKey, openaiModel),
       s3: new S3Client({ region }),
       ses: new SESClient({ region }),

@@ -2,7 +2,7 @@
 title: 'Ticketmaster Event Source'
 slug: 'ticketmaster-event-source'
 created: '2026-03-19'
-status: 'ready-for-dev'
+status: 'completed'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['TypeScript', 'Node 24 native fetch', 'Ticketmaster Discovery v2 API', 'AWS CDK']
 files_to_modify:
@@ -90,7 +90,7 @@ Create a `TicketmasterSource` class in a new `src/event-pipeline/event-sources/`
 
 Tasks are ordered lowest-dependency first.
 
-- [ ] Task 1: Create `TicketmasterSource` class
+- [x] Task 1: Create `TicketmasterSource` class
   - File: `src/event-pipeline/event-sources/ticketmaster.ts` (new file, new directory)
   - Action: Create the file with the full implementation below. The directory `event-sources/` does not exist yet — create it.
   - Notes:
@@ -206,7 +206,7 @@ Tasks are ordered lowest-dependency first.
     }
     ```
 
-- [ ] Task 2: Wire `TicketmasterSource` into the Lambda handler
+- [x] Task 2: Wire `TicketmasterSource` into the Lambda handler
   - File: `src/event-pipeline/index.ts`
   - Action 1: Add import after the existing imports:
     ```typescript
@@ -221,14 +221,14 @@ Tasks are ordered lowest-dependency first.
     sources: [new TicketmasterSource(ticketmasterApiKey)],
     ```
 
-- [ ] Task 3: Add `TICKETMASTER_API_KEY` env var to the CDK stack
+- [x] Task 3: Add `TICKETMASTER_API_KEY` env var to the CDK stack
   - File: `lib/recommender-app-stack.ts`
   - Action: In the `environment: { ... }` block of `eventPipelineFn`, add alongside `OPENAI_API_KEY`:
     ```typescript
     TICKETMASTER_API_KEY: this.node.getContext('ticketmasterKey'),
     ```
 
-- [ ] Task 4: Add `--ticketmaster-key` to the deploy script
+- [x] Task 4: Add `--ticketmaster-key` to the deploy script
   - File: `deploy.sh`
   - Action 1: Update `usage()` echo to include `--ticketmaster-key <key>`:
     ```
@@ -249,19 +249,27 @@ Tasks are ordered lowest-dependency first.
 
 ### Acceptance Criteria
 
-- [ ] AC1: Given `TicketmasterSource` is instantiated with an API key, when `fetch()` is called, then it returns a `Promise<Event[]>` where every item has `title`, `venue`, `date` (YYYY-MM-DD), `url`, and `sourceId === 'ticketmaster'`
+- [x] AC1: Given `TicketmasterSource` is instantiated with an API key, when `fetch()` is called, then it returns a `Promise<Event[]>` where every item has `title`, `venue`, `date` (YYYY-MM-DD), `url`, and `sourceId === 'ticketmaster'`
 
-- [ ] AC2: Given the TM API returns more than 500 total events matching the query, when `fetch()` is called, then no more than 500 events are returned
+- [x] AC2: Given the TM API returns more than 500 total events matching the query, when `fetch()` is called, then no more than 500 events are returned
 
-- [ ] AC3: Given today is T, when `fetch()` is called, then all API requests include `startDateTime` = T at 00:00:00Z and `endDateTime` = T+90 days
+- [x] AC3: Given today is T, when `fetch()` is called, then all API requests include `startDateTime` = T at 00:00:00Z and `endDateTime` = T+90 days
 
-- [ ] AC4: Given the TM API returns a non-2xx HTTP status, when `fetch()` is called, then it throws an `Error` containing the status code — `fetchAllEvents` catches it as a non-fatal `SourceError` and the pipeline continues
+- [x] AC4: Given the TM API returns a non-2xx HTTP status, when `fetch()` is called, then it throws an `Error` containing the status code — `fetchAllEvents` catches it as a non-fatal `SourceError` and the pipeline continues
 
-- [ ] AC5: Given the Lambda handler runs with `TICKETMASTER_API_KEY` set, when any log output is produced, then the API key value does not appear in any `console.log` or `console.warn` line
+- [x] AC5: Given the Lambda handler runs with `TICKETMASTER_API_KEY` set, when any log output is produced, then the API key value does not appear in any `console.log` or `console.warn` line
 
-- [ ] AC6: Given `ticketmasterKey` is set in CDK context, when `cdk deploy` runs, then the Lambda function environment contains `TICKETMASTER_API_KEY` with that value
+- [x] AC6: Given `ticketmasterKey` is set in CDK context, when `cdk deploy` runs, then the Lambda function environment contains `TICKETMASTER_API_KEY` with that value
 
-- [ ] AC7: Given `deploy.sh` is invoked without `--ticketmaster-key`, when the script runs, then it exits non-zero and prints the updated usage line
+- [x] AC7: Given `deploy.sh` is invoked without `--ticketmaster-key`, when the script runs, then it exits non-zero and prints the updated usage line
+
+## Review Notes
+
+- Adversarial review completed
+- Findings: 7 total, 5 fixed, 2 skipped
+- Resolution approach: walk-through
+- Skipped: F1 (plaintext key in Lambda env — pre-existing pattern, out of scope), F3 (no per-request timeout — accepted trade-off)
+- Fixed: F2 (page-count cap), F4 (inter-page delay for rate limiting), F5 (non-JSON response guard), F6 (missing url skips event), F7 (attraction.name type predicate)
 
 ## Additional Context
 

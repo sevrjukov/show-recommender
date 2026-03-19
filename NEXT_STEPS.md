@@ -1,5 +1,4 @@
 # Next project steps
-- run adversarial on ticketmaster tech spec
 - introduce unit tests to the typescript code
 - solution redesign IG-2
 - implement event sources

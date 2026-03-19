@@ -33,6 +33,7 @@ export class RecommenderAppStack extends cdk.Stack {
       environment: {
         BUCKET_NAME: bucketName,
         OPENAI_API_KEY: this.node.getContext('openaiKey'),
+        TICKETMASTER_API_KEY: this.node.getContext('ticketmasterKey'),
         SENDER_EMAIL: this.node.getContext('senderEmail'),
         RECIPIENT_EMAIL: this.node.getContext('recipientEmail'),
         OPENAI_MODEL: this.node.getContext('openaiModel'),
