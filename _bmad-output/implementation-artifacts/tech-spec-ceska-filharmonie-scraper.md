@@ -2,7 +2,7 @@
 title: 'Česká filharmonie Scraper'
 slug: 'ceska-filharmonie-scraper'
 created: '2026-03-19'
-status: 'ready-for-dev'
+status: 'Completed'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['TypeScript 5.9.3 (strict, NodeNext)', 'Node.js 20 LTS', 'cheerio 1.2.0', '@types/node 24 (fetch + AbortSignal.timeout globals)']
 files_to_modify:
@@ -109,14 +109,14 @@ Implement `CeskaFilharmonieSource` as a two-phase web scraper implementing the `
 
 ---
 
-- [ ] **Task 1: Install cheerio**
+- [x] **Task 1: Install cheerio**
   - File: `package.json`
   - Action: Run `npm install cheerio` — adds `cheerio@1.2.0` to `dependencies`
   - Notes: Must be in `dependencies` (not `devDependencies`) — esbuild bundles it into the Lambda artifact. If `cheerio` is already present anywhere in `package.json` (e.g. in `devDependencies` from a prior attempt), remove it from there first and re-run `npm install cheerio` to ensure it lands in `dependencies`. Verify after install.
 
 ---
 
-- [ ] **Task 2: Raise pipeline source timeout and Lambda timeout**
+- [x] **Task 2: Raise pipeline source timeout and Lambda timeout**
   - Files: `src/event-pipeline/fetch-events.ts`, `lib/recommender-app-stack.ts`
   - Action:
 
@@ -142,7 +142,7 @@ Implement `CeskaFilharmonieSource` as a two-phase web scraper implementing the `
 
 ---
 
-- [ ] **Task 3: Create `src/event-pipeline/event-sources/ceska-filharmonie.ts`**
+- [x] **Task 3: Create `src/event-pipeline/event-sources/ceska-filharmonie.ts`**
   - File: `src/event-pipeline/event-sources/ceska-filharmonie.ts` (new)
   - Action: Implement `CeskaFilharmonieSource`:
 
@@ -474,7 +474,7 @@ Implement `CeskaFilharmonieSource` as a two-phase web scraper implementing the `
 
 ---
 
-- [ ] **Task 4: Register source in `src/event-pipeline/index.ts`**
+- [x] **Task 4: Register source in `src/event-pipeline/index.ts`**
   - File: `src/event-pipeline/index.ts`
   - Action: Import `CeskaFilharmonieSource` and add it to the sources array. No new env vars needed.
 
@@ -565,6 +565,16 @@ Implement `CeskaFilharmonieSource` as a two-phase web scraper implementing the `
   - Given: Tasks 2 complete
   - When: `fetch-events.ts` and `lib/recommender-app-stack.ts` are inspected
   - Then: `SOURCE_TIMEOUT_MS === 90_000` and Lambda timeout is `cdk.Duration.seconds(180)`
+
+---
+
+## Review Notes
+
+- Adversarial review completed
+- Findings: 16 total, 9 fixed, 7 skipped
+- Resolution approach: walk-through
+- Fixed: F3 (JSON-LD parse warning), F4 (canonical URLs), F5 (timezone-aware date parsing), F6 (full title from JSON-LD), F8 (Set for composer dedup), F11+F12 (cheerio .text() for description), F16 (429/503 retry)
+- Skipped: F1 (timeout worst-case acceptable), F2 (full season fine), F7 (mitigated by F6), F9 (fallback venue acceptable), F10 (in-flight fetch acceptable), F13 (noise), F14 (page URL inconsistency benign), F15 (domhandler traversal stable)
 
 ---
 

@@ -32,7 +32,9 @@
       "Bash(npx cdk:*)",
       "Bash(npm run:*)",
       "Read(//dev/**)",
-      "Bash(node -e \"const n = require\\(''@types/node/package.json''\\); console.log\\(n.version\\)\")"
+      "Bash(node -e \"const n = require\\(''@types/node/package.json''\\); console.log\\(n.version\\)\")",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

@@ -3,6 +3,7 @@ import { SESClient } from '@aws-sdk/client-ses';
 import { OpenAIAdapter } from './adapters/openai-adapter.js';
 import { runPipeline } from './pipeline.js';
 import { TicketmasterSource } from './event-sources/ticketmaster.js';
+import { CeskaFilharmonieSource } from './event-sources/ceska-filharmonie.js';
 
 /**
  * Lambda entry point for the event-pipeline function.
@@ -40,7 +41,10 @@ export const handler = async (): Promise<void> => {
 
   try {
     const result = await runPipeline({
-      sources: [new TicketmasterSource(ticketmasterApiKey)],
+      sources: [
+        new TicketmasterSource(ticketmasterApiKey),
+        new CeskaFilharmonieSource(),
+      ],
       llmAdapter: new OpenAIAdapter(openaiApiKey, openaiModel),
       s3: new S3Client({ region }),
       ses: new SESClient({ region }),

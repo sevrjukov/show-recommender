@@ -1,7 +1,7 @@
 import type { Event, EventSource, FetchResult } from './types.js';
 
 /** Maximum time (ms) to wait for a single source before treating it as failed. */
-const SOURCE_TIMEOUT_MS = 30_000;
+const SOURCE_TIMEOUT_MS = 90_000;
 
 /**
  * Race a promise against a timeout, rejecting with a descriptive error if the
