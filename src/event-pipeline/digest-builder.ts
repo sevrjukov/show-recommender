@@ -7,7 +7,7 @@ import type { MatchResult, SourceError } from './types.js';
  * strip `<style>` blocks from the `<head>`. Edit here to restyle the digest.
  */
 const S = {
-  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
+  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
   container: 'max-width: 620px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 32px 40px;',
   h2: 'font-size: 17px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 32px; margin-bottom: 12px;',
   ul: 'padding: 0; list-style: none; margin: 0;',
@@ -36,13 +36,18 @@ const S = {
  * @param errors - Any {@link SourceError} values collected during event fetching.
  * @returns A complete `<!DOCTYPE html>` document as a string, ready to send via SES.
  */
+function formatDate(isoDate: string): string {
+  const d = new Date(`${isoDate.slice(0, 10)}T12:00:00Z`);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
 export function buildDigest(result: MatchResult, errors: SourceError[]): string {
   const sections: string[] = [];
 
   // --- Matched events ---
   if (result.matched.length > 0) {
     const items = result.matched.map(({ event, reasoning }) =>
-      `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${event.date}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
+      `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${formatDate(event.date)}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
     );
     sections.push(`<h2 style="${S.h2}">Upcoming events for you</h2><ul style="${S.ul}">${items.join('')}</ul>`);
   } else {
