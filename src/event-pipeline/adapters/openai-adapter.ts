@@ -15,7 +15,8 @@ Where:
 - "suggestions": artists/composers found in the events that are NOT in the user's preferences but are stylistically relevant — include a short reason why they fit the user's taste, for the user to consider adding
 
 HARD RULES:
-- If the user's profile contains an "exclude" list, NEVER include any event whose title, venue, or description contains any of those terms (case-insensitive match). This overrides all other criteria.`;
+- If the user's profile contains an "exclude" list, NEVER include any event whose title, venue, or description contains any of those terms (case-insensitive match). This overrides all other criteria.
+- If an event is included twice in the input list, return it only once (deduplicate). This may happen because events are scraped from multiple overlapping sources, each having slightly different description. It is up to you to identify them. If unsure, return both events.`;
 
 /**
  * {@link LLMAdapter} implementation backed by the OpenAI Chat Completions API.
