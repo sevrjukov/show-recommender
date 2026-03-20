@@ -51,6 +51,18 @@ export interface MatchResult {
 }
 
 /**
+ * A record of an event that was evaluated by the LLM and rejected.
+ * Stored in S3 at `data/events-discarded.json`. Cleared by `upload_preferences.sh`
+ * on preference update so rejected events are re-evaluated against new preferences.
+ */
+export interface DiscardedRecord {
+  key: string;    // SHA-256 dedup key
+  title: string;  // event.title
+  date: string;   // event.date (ISO YYYY-MM-DD)
+  venue: string;  // event.venue
+}
+
+/**
  * A non-fatal error that occurred while fetching from a single event source.
  * The pipeline continues after recording the error and surfaces it in the digest.
  */

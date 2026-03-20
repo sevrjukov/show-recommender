@@ -36,7 +36,7 @@ Two interfaces — `EventSource` and `LLMAdapter` — decouple data sources and 
 | `src/event-pipeline/load-preferences.ts` | Loads and validates `config/user-preferences.json` from S3 |
 | `src/event-pipeline/fetch-events.ts` | Calls all registered `EventSource` instances concurrently, collects errors |
 | `src/event-pipeline/dedup.ts` | Hash-based cross-source deduplication |
-| `src/event-pipeline/exclude-evaluated.ts` | Loads/saves `data/events-evaluated.json` from S3; filters already-evaluated events |
+| `src/event-pipeline/exclude-evaluated.ts` | Loads/saves `data/events-sent.json` and `data/events-discarded.json`; filters already-evaluated events |
 | `src/event-pipeline/llm-match.ts` | Thin wrapper delegating to `LLMAdapter`; guards against empty event list |
 | `src/event-pipeline/digest-builder.ts` | Assembles plain HTML email body from matches, suggestions, and source warnings |
 | `src/event-pipeline/send-email.ts` | Sends HTML digest via AWS SES |
@@ -54,12 +54,14 @@ Steps execute sequentially in `pipeline.ts`. Each module emits its own log lines
 1. Load preferences       loadPreferences()        → UserPreferences (fatal if missing/malformed)
 2. Fetch events           fetchAllEvents()          → { events, errors } (non-fatal per source)
 3. Deduplicate            deduplicateEvents()       → unique Event[]
-4. Exclude evaluated      loadEvaluatedKeys()       → Set<string>
+4. Exclude evaluated      loadSentKeys()            → Set<string>
+                          loadDiscardedRecords()    → DiscardedRecord[]
                           excludeEvaluatedEvents()  → new Event[] only
 5. LLM matching           matchEvents()             → MatchResult (matched + suggestions)
 6. Build digest           buildDigest()             → HTML string
 7. Send email             sendDigestEmail()         → void (fatal if SES fails)
-8. Persist evaluated      saveEvaluatedKeys()       → merges existing + all evaluated keys back to S3
+8. Persist results        saveSentKeys()            → appends matched event keys to events-sent.json
+                          saveDiscardedEvents()     → appends rejected event records to events-discarded.json
 ```
 
 **Failure semantics:**
@@ -152,8 +154,11 @@ Model is configurable via `OPENAI_MODEL` env var — no hardcoded default. Must 
 - Venue and title: lowercased and trimmed.
 - Sources are responsible for providing the canonical `YYYY-MM-DD` date format.
 
-### `events-evaluated.json`
-Array of dedup key strings stored in S3 at `data/events-evaluated.json`. On first run the file is absent — treated as empty array (graceful init). After each run, all evaluated event keys (matched *and* rejected) are merged and written back. This prevents unbounded LLM re-evaluation of events that will never match current preferences. The file is cleared by `upload_preferences.sh` whenever preferences are updated, so all events are re-evaluated against new preferences.
+### `events-sent.json` and `events-discarded.json`
+
+Evaluated events are stored in two separate S3 files:
+- `data/events-sent.json`: `string[]` of dedup keys — events included in at least one digest. Never cleared by `upload_preferences.sh`. Prevents re-sending past events.
+- `data/events-discarded.json`: `DiscardedRecord[]` — LLM-rejected events stored with `{ key, title, date, venue }` for debugging. Cleared by `upload_preferences.sh` on preference update so newly-added artists/genres are re-evaluated. Both files are combined into a single exclusion Set at pipeline start. File absent → graceful empty init for both.
 
 ### Non-fatal source failure
 Each `EventSource.fetch()` is wrapped in a `try/catch` with a 30-second timeout via `Promise.race`. Errors are collected and passed through to the digest as a warnings section. The pipeline never throws on individual source failure.
@@ -179,7 +184,8 @@ Geographic constraints (classical: CZ/DE/AT/PL/SK/HU; electronic/jazz: CZ only) 
 | Key | R/W | Description |
 |-----|-----|-------------|
 | `config/user-preferences.json` | Read | User taste profile — artists, composers, genres |
-| `data/events-evaluated.json` | Read + Write | Append-only dedup key log of all evaluated events |
+| `data/events-sent.json`      | Read + Write | Dedup keys of events included in a sent digest |
+| `data/events-discarded.json` | Read + Write | Records of LLM-rejected events `{ key, title, date, venue }`; cleared on preference update |
 
 ### Environment Variables
 

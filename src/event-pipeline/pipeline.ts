@@ -4,8 +4,8 @@ import type { LLMAdapter } from './adapters/llm-adapter.js';
 import type { EventSource, PipelineResult } from './types.js';
 import { loadPreferences } from './load-preferences.js';
 import { fetchAllEvents } from './fetch-events.js';
-import { deduplicateEvents } from './dedup.js';
-import { loadEvaluatedKeys, excludeEvaluatedEvents, saveEvaluatedKeys } from './exclude-evaluated.js';
+import { deduplicateEvents, computeDedupKey } from './dedup.js';
+import { loadSentKeys, loadDiscardedRecords, excludeEvaluatedEvents, saveSentKeys, saveDiscardedEvents } from './exclude-evaluated.js';
 import { matchEvents } from './llm-match.js';
 import { buildDigest } from './digest-builder.js';
 import { sendDigestEmail } from './send-email.js';
@@ -65,9 +65,11 @@ export async function runPipeline(deps: PipelineDeps): Promise<PipelineResult> {
   // 3. Deduplicate across sources — [dedup] log emitted by deduplicateEvents
   const uniqueEvents = deduplicateEvents(rawEvents);
 
-  // 4. Load already-evaluated keys and filter — [exclude-evaluated] logs emitted by loadEvaluatedKeys and excludeEvaluatedEvents
-  const evaluatedKeys = await loadEvaluatedKeys(s3, bucketName);
-  const newEvents = excludeEvaluatedEvents(uniqueEvents, evaluatedKeys);
+  // 4. Load already-evaluated keys and filter — [exclude-evaluated] logs emitted by load functions and excludeEvaluatedEvents
+  const sentKeys = await loadSentKeys(s3, bucketName);
+  const discardedRecords = await loadDiscardedRecords(s3, bucketName);
+  const allEvaluatedKeys = new Set([...sentKeys, ...discardedRecords.map(r => r.key)]);
+  const newEvents = excludeEvaluatedEvents(uniqueEvents, allEvaluatedKeys);
 
   // 5. LLM matching
   const matchResult = await matchEvents(llmAdapter, preferences, newEvents);
@@ -78,8 +80,13 @@ export async function runPipeline(deps: PipelineDeps): Promise<PipelineResult> {
   // 7. Send email (before persisting — if send fails, events are not marked evaluated and will retry next week)
   await sendDigestEmail(ses, senderEmail, recipientEmail, html);
 
-  // 8. Persist all evaluated event keys (matched + rejected) to prevent unbounded re-evaluation
-  await saveEvaluatedKeys(s3, bucketName, evaluatedKeys, newEvents);
+  // 8. Persist results: sent events to events-sent.json, rejected events to events-discarded.json
+  const matchedKeys = new Set(matchResult.matched.map(m => computeDedupKey(m.event)));
+  // Events in this run that the LLM rejected — persisted so they are excluded from future runs
+  // until upload_preferences.sh clears events-discarded.json.
+  const newlyDiscarded = newEvents.filter(e => !matchedKeys.has(computeDedupKey(e)));
+  await saveSentKeys(s3, bucketName, sentKeys, matchResult.matched.map(m => m.event));
+  await saveDiscardedEvents(s3, bucketName, discardedRecords, newlyDiscarded);
 
   const result: PipelineResult = {
     matchedCount: matchResult.matched.length,
