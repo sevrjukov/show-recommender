@@ -43,7 +43,8 @@
       "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; show-recommender-bot/1.0\\)\" \"https://www.ceskafilharmonie.cz/en/whats-on/\")",
       "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; show-recommender-bot/1.0\\)\" \"https://www.ceskafilharmonie.cz/en/event/33743-cristian-macelaru-czech-philharmonic/\")",
       "Bash(find /Users/alex/Work/Personal/git/show-recommender -name *socr* -type f)",
-      "Bash(LIVE=1 npx jest socr.live.test.ts --verbose)"
+      "Bash(LIVE=1 npx jest socr.live.test.ts --verbose)",
+      "Bash(LIVE=1 npx jest musikverein.live --testTimeout=120000)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output",
