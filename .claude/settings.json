@@ -37,7 +37,11 @@
       "Bash(npx tsc:*)",
       "Bash(npm test:*)",
       "Bash(npx jest:*)",
-      "Bash(LIVE=1 npx jest fok.live --verbose)"
+      "Bash(LIVE=1 npx jest fok.live --verbose)",
+      "Bash(LIVE=1 npx jest test/event-pipeline/event-sources/ceska-filharmonie.live.test.ts --no-coverage --verbose)",
+      "Bash(LIVE=1 npx jest test/event-pipeline/event-sources/ceska-filharmonie.live.test.ts --no-coverage)",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; show-recommender-bot/1.0\\)\" \"https://www.ceskafilharmonie.cz/en/whats-on/\")",
+      "Bash(curl -s -A \"Mozilla/5.0 \\(compatible; show-recommender-bot/1.0\\)\" \"https://www.ceskafilharmonie.cz/en/event/33743-cristian-macelaru-czech-philharmonic/\")"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

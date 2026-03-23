@@ -231,31 +231,37 @@ async function scrapeDetailPage(url: string): Promise<CfDetail> {
   }
 
   // --- Full performers from <h2>Performers</h2> section ---
-  // Structure: <strong>Name</strong> [whitespace text node] <em>role</em>
-  // Raw DOM traversal handles whitespace nodes; isTag() guard narrows AnyNode to Element.
+  // Structure: <p><strong>Name</strong><em>role</em></p>
+  // Multiple performers can share a <p> (e.g. conductor + orchestra on the same line).
+  // For each <strong>, look for the immediately following <em> sibling within the <p>.
   const performers: string[] = [];
   const perfH2 = $('h2')
     .filter((_, el) => $(el).text().trim() === 'Performers')
     .first();
 
   if (perfH2.length) {
-    let currentName: string | null = null;
     let node: AnyNode | null = (perfH2[0] as Element).next ?? null;
     while (node) {
       if (isTag(node)) {
         if (node.name === 'h2') break;
-        if (node.name === 'strong') {
-          if (currentName !== null) performers.push(currentName); // flush (no role found)
-          currentName = $(node).text().trim() || null;
-        } else if (node.name === 'em' && currentName !== null) {
-          const role = $(node).text().trim();
-          performers.push(role ? `${currentName} (${role})` : currentName);
-          currentName = null;
+        if (node.name === 'p') {
+          $(node).find('strong').each((_, strongEl) => {
+            const name = $(strongEl).text().replace(/\u00a0/g, ' ').trim();
+            if (!name) return;
+            // Scan forward for the next <em> sibling, stopping at the next <strong>
+            let sib: AnyNode | null = strongEl.next ?? null;
+            while (sib && !(isTag(sib) && ((sib as Element).name === 'em' || (sib as Element).name === 'strong'))) {
+              sib = sib.next ?? null;
+            }
+            const role = (sib && isTag(sib) && (sib as Element).name === 'em')
+              ? $(sib).text().trim()
+              : '';
+            performers.push(role ? `${name} (${role})` : name);
+          });
         }
       }
       node = node.next ?? null;
     }
-    if (currentName !== null) performers.push(currentName); // flush last
 
     if (performers.length === 0) {
       // Warn if the section exists but yielded nothing — signals HTML structure change
@@ -264,8 +270,8 @@ async function scrapeDetailPage(url: string): Promise<CfDetail> {
   }
 
   // --- Composers from <h2>Programme</h2> section ---
-  // Structure: <strong>Composer Name</strong> + text node work title [+ intermission marker]
-  // Only <strong> elements are collected; text nodes (work titles) and intermissions are ignored.
+  // Structure: <p><strong>Composer Name</strong> work title text</p>
+  // Only the first <strong> per <p> is a composer; text nodes and intermissions are ignored.
   // Note: uses `progNode` (not `node`) to avoid redeclaring the variable from the Performers block.
   const composersSet = new Set<string>();
   const progH2 = $('h2')
@@ -277,8 +283,8 @@ async function scrapeDetailPage(url: string): Promise<CfDetail> {
     while (progNode) {
       if (isTag(progNode)) {
         if (progNode.name === 'h2') break;
-        if (progNode.name === 'strong') {
-          const composer = $(progNode).text().trim();
+        if (progNode.name === 'p') {
+          const composer = $(progNode).find('strong').first().text().replace(/\u00a0/g, ' ').trim();
           if (composer) composersSet.add(composer);
         }
       }
