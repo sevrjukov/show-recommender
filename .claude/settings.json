@@ -35,7 +35,9 @@
       "Bash(node -e \"const n = require\\(''@types/node/package.json''\\); console.log\\(n.version\\)\")",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx jest:*)",
+      "Bash(LIVE=1 npx jest fok.live --verbose)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"

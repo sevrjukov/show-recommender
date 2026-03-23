@@ -4,6 +4,7 @@ import { OpenAIAdapter } from './adapters/openai-adapter.js';
 import { runPipeline } from './pipeline.js';
 import { TicketmasterSource } from './event-sources/ticketmaster.js';
 import { CeskaFilharmonieSource } from './event-sources/ceska-filharmonie.js';
+import { FokSource } from './event-sources/fok.js';
 
 /**
  * Lambda entry point for the event-pipeline function.
@@ -44,6 +45,7 @@ export const handler = async (): Promise<void> => {
       sources: [
         new TicketmasterSource(ticketmasterApiKey),
         new CeskaFilharmonieSource(),
+        new FokSource(),
       ],
       llmAdapter: new OpenAIAdapter(openaiApiKey, openaiModel),
       s3: new S3Client({ region }),
