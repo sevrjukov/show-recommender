@@ -7,9 +7,9 @@ import type { MatchResult, SourceError } from './types.js';
  * strip `<style>` blocks from the `<head>`. Edit here to restyle the digest.
  */
 const S = {
-  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 24px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
-  container: 'background: #fff; border-radius: 8px; padding: 32px 16px;',
-  h1: 'font-size: 26px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin: 0 0 12px 0;',
+  body: 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 18px; line-height: 1.6; color: #222; background: #f9f9f9; margin: 0; padding: 24px 16px;',
+  container: 'background: #fff; border-radius: 8px; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 18px; line-height: 1.6; color: #222;',
+  h1: 'font-size: 20px; font-weight: 600; color: #111; border-bottom: 1px solid #eee; padding-bottom: 6px; margin: 0 0 12px 0;',
   ul: 'padding: 0; list-style: none; margin: 0;',
   li: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0;',
   liWarning: 'padding: 12px 0; border-bottom: 1px solid #f0f0f0; color: #b45309;',

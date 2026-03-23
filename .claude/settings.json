@@ -46,7 +46,8 @@
       "Bash(LIVE=1 npx jest socr.live.test.ts --verbose)"
     ],
     "additionalDirectories": [
-      "/Users/alex/Work/Personal/git/show-recommender/_bmad-output"
+      "/Users/alex/Work/Personal/git/show-recommender/_bmad-output",
+      "/Users/alex/Downloads"
     ]
   }
 }
