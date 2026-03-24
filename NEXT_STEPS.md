@@ -1,5 +1,5 @@
 # Next project steps
-- implement more event sources: Obecni dum, Berlin, Vienna, Eblphil
+- implement more event sources: Obecni dum, Eblphil
 - set alarms on WARNs in log
 
 # Sometimes / next phase
