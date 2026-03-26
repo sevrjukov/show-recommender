@@ -214,7 +214,7 @@ All vars default to empty string in handler code — missing vars produce clear 
 
 | File | Purpose |
 |------|---------|
-| `_bmad-output/brainstorming/brainstorming-session-2026-03-17-1400.md` | Full architecture decisions, pipeline flow, S3 layout, matching approach |
+| `docs/business-spec-2026-03-17-1400.md` | Full architecture decisions, pipeline flow, S3 layout, matching approach |
 | `lib/recommender-app-stack.ts` | CDK stack — Lambda env vars, timeout |
 | `tsconfig.json` | NodeNext module resolution config |
 | `jest.config.js` | Test runner config — ts-jest, `.js` extension mapper |
