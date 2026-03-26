@@ -8,6 +8,7 @@ import { FokSource } from './event-sources/fok.js';
 import { SocrSource } from './event-sources/socr.js';
 import { MusikvereinSource } from './event-sources/musikverein.js';
 import { BerlinerPhilSource } from './event-sources/berliner-phil.js';
+import { ElbphilharmonieSource } from './event-sources/elbphilharmonie.js';
 
 /**
  * Lambda entry point for the event-pipeline function.
@@ -52,6 +53,7 @@ export const handler = async (): Promise<void> => {
         new SocrSource(),
         new MusikvereinSource(),
         new BerlinerPhilSource(),
+        new ElbphilharmonieSource(),
       ],
       llmAdapter: new OpenAIAdapter(openaiApiKey, openaiModel),
       s3: new S3Client({ region }),
