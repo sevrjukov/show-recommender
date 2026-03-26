@@ -29,7 +29,7 @@ export class RecommenderAppStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_24_X,
       architecture: lambda.Architecture.ARM_64,
       memorySize: 512,
-      timeout: cdk.Duration.seconds(180),
+      timeout: cdk.Duration.seconds(420),
       environment: {
         BUCKET_NAME: bucketName,
         OPENAI_API_KEY: this.node.getContext('openaiKey'),

@@ -2,6 +2,8 @@ import OpenAI from 'openai';
 import type { LLMAdapter } from './llm-adapter.js';
 import type { Event, MatchResult, MatchedEvent, Suggestion, UserPreferences } from '../types.js';
 
+const LLM_TIMEOUT_MS = 60_000;
+
 const SYSTEM_PROMPT = `You are a music event matching assistant. Given a user's taste profile and a list of upcoming music events, identify which events the user would likely enjoy attending.
 
 Return ONLY a valid JSON object with this exact structure:
@@ -73,7 +75,7 @@ export class OpenAIAdapter implements LLMAdapter {
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userMessage },
           ],
-        });
+        }, { timeout: LLM_TIMEOUT_MS });
 
         const raw = completion.choices[0]?.message?.content ?? '{}';
         const parsed = JSON.parse(raw) as { matched?: { eventIndex: number; reasoning: string }[]; suggestions?: { name: string; reasoning: string }[] };

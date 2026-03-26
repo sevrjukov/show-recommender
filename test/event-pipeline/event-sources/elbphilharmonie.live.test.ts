@@ -4,7 +4,7 @@ import type { Event } from '../../../src/event-pipeline/types.js';
 const RUN_LIVE = process.env['LIVE'] === '1';
 const describe_ = RUN_LIVE ? describe : describe.skip;
 
-jest.setTimeout(120_000);
+jest.setTimeout(180_000);
 
 // Static canonical halls — fail if a new Elbphilharmonie/Laeiszhalle hall appears here
 // Note: Kaistudio N and Kaispeicher N are matched by pattern (any numbered room is valid)
@@ -29,7 +29,7 @@ describe_('ElbphilharmonieSource — live integration (LIVE=1 to run)', () => {
   beforeAll(async () => {
     const source = new ElbphilharmonieSource();
     events = await source.fetch();
-  }, 120_000);
+  }, 180_000);
 
   it('returns at least 5 events', () => {
     console.log(`\n[elbphilharmonie live] Total events returned: ${events.length}`);

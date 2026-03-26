@@ -161,7 +161,40 @@ Evaluated events are stored in two separate S3 files:
 - `data/events-discarded.json`: `DiscardedRecord[]` — LLM-rejected events stored with `{ key, title, date, venue }` for debugging. Cleared by `upload_preferences.sh` on preference update so newly-added artists/genres are re-evaluated. Both files are combined into a single exclusion Set at pipeline start. File absent → graceful empty init for both.
 
 ### Non-fatal source failure
-Each `EventSource.fetch()` is wrapped in a `try/catch` with a 30-second timeout via `Promise.race`. Errors are collected and passed through to the digest as a warnings section. The pipeline never throws on individual source failure.
+Each `EventSource.fetch()` is wrapped in a `try/catch` with a 180-second timeout via `Promise.race`. Errors are collected and passed through to the digest as a warnings section. The pipeline never throws on individual source failure.
+
+### Timeouts
+
+Three layers of timeouts apply during a pipeline run:
+
+| Layer | Value | Location | Purpose |
+|-------|-------|----------|---------|
+| Lambda execution | 420 s | `lib/recommender-app-stack.ts` | Hard ceiling imposed by AWS |
+| Per-source fetch | 180 s (`SOURCE_TIMEOUT_MS`) | `fetch-events.ts` | `Promise.race` wrapping `source.fetch()` — triggers non-fatal source error |
+| Per-HTTP-request | 10 s (`AbortSignal.timeout`) | each event-source `fetchHtml`/`fetchJson` | Aborts a single stalled HTTP connection |
+| LLM API call | 60 s (`LLM_TIMEOUT_MS`) | `openai-adapter.ts` | OpenAI SDK request-level timeout; triggers retry |
+
+The nesting relationship: one source run can issue many HTTP requests, each capped at 10 s; the whole source is capped at 180 s; the LLM call is capped at 60 s; the whole Lambda is capped at 420 s. If a source consistently hits the 180 s ceiling it likely means many sequential requests each approaching their 10 s limit.
+
+Individual HTTP fetches also implement up to 3 retries with linear backoff (`attempt × 500 ms`, capped at the `Retry-After` header value when present, max 10 s). A `429` or 5xx response triggers a retry; any other error is re-thrown immediately.
+
+The OpenAI adapter retries transient API failures (including timeouts) up to 3 attempts with a `1 s × attempt` delay between retries.
+
+All event sources pace consecutive requests with a 250 ms inter-request delay (`REQUEST_DELAY_MS`) to avoid rate-limiting.
+
+**Observed fetch times (live, 2026-03-26 22:30):**
+
+| Source | Events | Fetch time | Notes |
+|--------|--------|------------|-------|
+| Elbphilharmonie | 221 | ~121 s | Slowest — HTML pagination + batched detail pages (concurrency 5) |
+| Musikverein | 695 | ~64 s | JSON API listing + detail pages |
+| Česká filharmonie | 44 | ~38 s | HTML pagination + detail pages |
+| FOK | 53 | ~16 s | HTML pagination + detail pages |
+| SOCR | 9 | ~15 s | Small catalogue |
+| Berliner Philharmoniker | 94 | ~14 s | JSON API, no detail pages |
+| Ticketmaster API | — | not measured | Paginated API calls; no scraping |
+
+Elbphilharmonie is the binding constraint for the 180 s per-source timeout. All sources run concurrently so the fetch phase duration equals the slowest source (~121 s in practice).
 
 ### NodeNext `.js` import extensions
 All relative imports across `src/event-pipeline/` use `.js` suffix (e.g. `import { foo } from './bar.js'`). This is required by TypeScript's `NodeNext` module resolution. esbuild handles the Lambda bundle and resolves correctly; `tsc --noEmit` requires the extensions to pass type-checking. Jest uses a `moduleNameMapper` to strip `.js` extensions at test time.
