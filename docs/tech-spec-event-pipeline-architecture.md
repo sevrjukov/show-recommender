@@ -169,7 +169,7 @@ Three layers of timeouts apply during a pipeline run:
 
 | Layer | Value | Location | Purpose |
 |-------|-------|----------|---------|
-| Lambda execution | 420 s | `lib/recommender-app-stack.ts` | Hard ceiling imposed by AWS |
+| Lambda execution | 600 s | `lib/recommender-app-stack.ts` | Hard ceiling imposed by AWS |
 | Per-source fetch | 180 s (`SOURCE_TIMEOUT_MS`) | `fetch-events.ts` | `Promise.race` wrapping `source.fetch()` — triggers non-fatal source error |
 | Per-HTTP-request | 10 s (`AbortSignal.timeout`) | each event-source `fetchHtml`/`fetchJson` | Aborts a single stalled HTTP connection |
 | LLM API call | 60 s (`LLM_TIMEOUT_MS`) | `openai-adapter.ts` | OpenAI SDK request-level timeout; triggers retry |
