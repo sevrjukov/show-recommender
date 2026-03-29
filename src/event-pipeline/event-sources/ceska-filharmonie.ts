@@ -1,5 +1,6 @@
 import { load } from 'cheerio';
 import type { AnyNode, Element } from 'domhandler';
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const BASE_URL = 'https://www.ceskafilharmonie.cz';
@@ -42,6 +43,7 @@ function isTag(node: AnyNode): node is Element {
 
 export class CeskaFilharmonieSource implements EventSource {
   readonly id = 'ceska-filharmonie';
+  readonly region = REGION.CZECH;
 
   async fetch(): Promise<Event[]> {
     console.log('[ceska-filharmonie] Starting scrape');

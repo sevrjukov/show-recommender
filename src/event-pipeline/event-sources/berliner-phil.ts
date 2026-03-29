@@ -1,3 +1,4 @@
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const BASE_URL = 'https://www.berliner-philharmoniker.de';
@@ -34,6 +35,7 @@ interface BpSearchResponse {
 
 export class BerlinerPhilSource implements EventSource {
   readonly id = 'berliner-phil';
+  readonly region = REGION.INTERNATIONAL;
 
   async fetch(): Promise<Event[]> {
     console.log('[berliner-phil] Starting fetch');

@@ -1,4 +1,5 @@
 import { load, type CheerioAPI } from 'cheerio';
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const BASE = 'https://www.elbphilharmonie.de';
@@ -27,6 +28,7 @@ interface ElbDetail {
 
 export class ElbphilharmonieSource implements EventSource {
   readonly id = 'elbphilharmonie';
+  readonly region = REGION.INTERNATIONAL;
 
   async fetch(): Promise<Event[]> {
     console.log('[elbphilharmonie] Starting scrape');

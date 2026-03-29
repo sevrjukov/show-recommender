@@ -5,6 +5,13 @@
  * returning events. The dedup logic tolerates full ISO datetime strings but the
  * canonical form is date-only.
  */
+export const REGION = {
+  CZECH: 'czech',
+  INTERNATIONAL: 'international',
+} as const;
+
+export type Region = (typeof REGION)[keyof typeof REGION];
+
 export interface Event {
   title: string;          // performer name or show title
   venue: string;          // venue name (canonical, as returned by the source)
@@ -12,6 +19,7 @@ export interface Event {
   date: string;
   url: string;            // direct link to the event page
   sourceId: string;       // identifier of the data source (e.g. 'ceska-filharmonie', 'ticketmaster')
+  region?: Region; // geographic region, stamped by fetch-events from EventSource.region
   performers?: string[];  // list of performer names if available from source
   composers?: string[];   // list of composer names if available from source
   description?: string;   // optional free-text for LLM context (genre, programme notes, etc.)
@@ -100,6 +108,8 @@ export interface PipelineResult {
 export interface EventSource {
   /** Stable identifier used in logs and error reporting (e.g. `'ceska-filharmonie'`). */
   readonly id: string;
+  /** Geographic region of this source's events — used to section the digest email. */
+  readonly region: Region;
   /** Fetch all upcoming events from this source. Must resolve with an array (empty is fine). */
   fetch(): Promise<Event[]>;
 }

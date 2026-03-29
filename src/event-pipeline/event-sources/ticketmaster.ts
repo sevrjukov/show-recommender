@@ -1,3 +1,4 @@
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const TM_BASE = 'https://app.ticketmaster.com/discovery/v2/events.json';
@@ -8,6 +9,7 @@ const WINDOW_DAYS = 90;
 
 export class TicketmasterSource implements EventSource {
   readonly id = 'ticketmaster';
+  readonly region = REGION.CZECH;
 
   constructor(private readonly apiKey: string) {}
 

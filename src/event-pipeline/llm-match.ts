@@ -2,6 +2,18 @@ import type { LLMAdapter } from './adapters/llm-adapter.js';
 import type { Event, MatchResult, UserPreferences } from './types.js';
 
 const CHUNK_SIZE = 50;
+const SUGGESTIONS_CAP = 10;
+
+function capSuggestions(suggestions: MatchResult['suggestions']): MatchResult['suggestions'] {
+  if (suggestions.length <= SUGGESTIONS_CAP) return suggestions;
+  const shuffled = [...suggestions];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+  }
+  console.log(`[llm] Capped suggestions from ${suggestions.length} to ${SUGGESTIONS_CAP} (random selection)`);
+  return shuffled.slice(0, SUGGESTIONS_CAP);
+}
 
 /**
  * Run LLM-based matching of events against the user's taste profile.
@@ -53,6 +65,8 @@ export async function matchEvents(
     }
   }
 
-  console.log(`[llm] Total: ${allMatched.length} matches, ${allSuggestions.length} suggestions`);
-  return { matched: allMatched, suggestions: allSuggestions };
+  const finalSuggestions = capSuggestions(allSuggestions);
+
+  console.log(`[llm] Total: ${allMatched.length} matches, ${finalSuggestions.length} suggestions`);
+  return { matched: allMatched, suggestions: finalSuggestions };
 }

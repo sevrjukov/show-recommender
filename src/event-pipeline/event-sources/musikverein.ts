@@ -1,4 +1,5 @@
 import { load } from 'cheerio';
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const LISTING_BASE = 'https://spielplan.musikverein.at';
@@ -60,6 +61,7 @@ interface MvApiResponse {
 
 export class MusikvereinSource implements EventSource {
   readonly id = 'musikverein';
+  readonly region = REGION.INTERNATIONAL;
 
   async fetch(): Promise<Event[]> {
     console.log('[musikverein] Starting scrape');

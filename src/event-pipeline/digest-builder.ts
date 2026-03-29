@@ -1,4 +1,5 @@
-import type { MatchResult, SourceError } from './types.js';
+import { REGION } from './types.js';
+import type { MatchedEvent, MatchResult, SourceError } from './types.js';
 
 /**
  * Inline style constants for all HTML elements in the digest email.
@@ -41,19 +42,26 @@ function formatDate(isoDate: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
+function renderEventSection(heading: string, matched: MatchedEvent[]): string {
+  if (matched.length === 0) {
+    return `<h1 style="${S.h1}">${escapeHtml(heading)}</h1><p style="${S.p}">No new matching events.</p>`;
+  }
+  const sorted = [...matched].sort((a, b) => a.event.date.localeCompare(b.event.date));
+  const items = sorted.map(({ event, reasoning }) =>
+    `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${formatDate(event.date)}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
+  );
+  return `<h1 style="${S.h1}">${escapeHtml(heading)}</h1><ul style="${S.ul}">${items.join('')}</ul>`;
+}
+
 export function buildDigest(result: MatchResult, errors: SourceError[]): string {
   const sections: string[] = [];
 
-  // --- Matched events ---
-  if (result.matched.length > 0) {
-    const sorted = [...result.matched].sort((a, b) => a.event.date.localeCompare(b.event.date));
-    const items = sorted.map(({ event, reasoning }) =>
-      `<li style="${S.li}"><strong>${escapeHtml(event.title)}</strong> · ${escapeHtml(event.venue)} · ${formatDate(event.date)}<br><a href="${safeHref(event.url)}" style="${S.a}">${escapeHtml(event.url)}</a><br><em style="${S.em}">${escapeHtml(reasoning)}</em></li>`
-    );
-    sections.push(`<h1 style="${S.h1}">Upcoming events for you</h1><ul style="${S.ul}">${items.join('')}</ul>`);
-  } else {
-    sections.push(`<h1 style="${S.h1}">Upcoming events for you</h1><p style="${S.p}">No new matching events this week.</p>`);
-  }
+  // --- Matched events (Czech / international sections) ---
+  const czechEvents = result.matched.filter(m => m.event.region === REGION.CZECH);
+  const intlEvents = result.matched.filter(m => m.event.region === REGION.INTERNATIONAL);
+
+  sections.push(renderEventSection('Czech Republic', czechEvents));
+  sections.push(renderEventSection('International', intlEvents));
 
   // --- Consider adding ---
   if (result.suggestions.length > 0) {

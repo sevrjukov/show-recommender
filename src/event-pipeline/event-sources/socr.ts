@@ -1,4 +1,5 @@
 import { load } from 'cheerio';
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const BASE_URL = 'https://socr.rozhlas.cz';
@@ -41,6 +42,7 @@ interface SocrDetail {
 
 export class SocrSource implements EventSource {
   readonly id = 'socr';
+  readonly region = REGION.CZECH;
 
   async fetch(): Promise<Event[]> {
     console.log('[socr] Starting scrape');

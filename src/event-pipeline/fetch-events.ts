@@ -43,7 +43,7 @@ export async function fetchAllEvents(sources: EventSource[]): Promise<FetchResul
       try {
         console.log(`[fetch] ${source.id}: fetching...`);
         const events = await withTimeout(source.fetch(), SOURCE_TIMEOUT_MS, source.id);
-        allEvents.push(...events);
+        allEvents.push(...events.map(e => ({ ...e, region: source.region })));
         console.log(`[fetch] ${source.id}: ${events.length} events returned`);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

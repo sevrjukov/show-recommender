@@ -1,5 +1,6 @@
 import { load } from 'cheerio';
 import type { AnyNode } from 'domhandler';
+import { REGION } from '../types.js';
 import type { Event, EventSource } from '../types.js';
 
 const BASE_URL = 'https://www.fok.cz';
@@ -63,6 +64,7 @@ interface FokDetail {
 
 export class FokSource implements EventSource {
   readonly id = 'fok';
+  readonly region = REGION.CZECH;
 
   async fetch(): Promise<Event[]> {
     console.log('[fok] Starting scrape');
