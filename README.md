@@ -30,7 +30,7 @@ State lives entirely in S3 (no database). The Lambda runs on an EventBridge cron
 
 - Node.js 20 LTS
 - AWS CLI configured with a profile that has CDK/SES/S3 permissions
-- Both sender and recipient emails verified in AWS SES
+- Both sender email or domain verified in AWS SES
 - OpenAI API key
 - Ticketmaster API key
 
