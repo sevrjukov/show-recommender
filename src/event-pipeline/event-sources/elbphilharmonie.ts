@@ -8,7 +8,7 @@ const DETAIL_CONCURRENCY = 5;
 const HORIZON_WEEKS = 25;
 
 const EXCLUDE_REGEX =
-  /(?:^|[\s\/,(])(Jazz|Pop|Rock|Electronic|DJ|Comedy|Chanson|Hip[- ]?Hop|Blues|Gospel|Spoken Word|Kulturcafé)(?:[\s\/,).]|$)/i;
+  /(?:^|[\s/,(])(Jazz|Pop|Rock|Electronic|DJ|Comedy|Chanson|Hip[- ]?Hop|Blues|Gospel|Spoken Word|Kulturcafé)(?:[\s/,).]|$)/i;
 
 interface ElbCard {
   numericId: string;
