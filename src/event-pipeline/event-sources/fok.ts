@@ -36,13 +36,8 @@ const VENUE_STRINGS = [
   'Rudolfinum',
 ];
 
-const ENGLISH_MONTHS: Record<string, number> = {
-  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
-  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
-};
 
 const EVENT_SLUG_RE = /^\/en\/([a-z][a-z0-9-]+)$/;
-const FOK_DATE_RE = /(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/;
 
 interface FokCard {
   slug: string;
@@ -194,32 +189,23 @@ async function scrapeDetailPage(url: string): Promise<FokDetail> {
   const $ = load(html);
 
   // --- Performance dates ---
-  // Pattern: "Wed, 18 Mar 2026 - 19:30"
-  // Exclude <script> and <style> content (avoids Drupal settings JSON false matches).
-  // Dedup on parsed ISO date strings — same-day rehearsal + evening show both parse to the
-  // same YYYY-MM-DD, so they collapse to a single Event. This is intentional: the pipeline
-  // dedup hash uses title+date+venue so two events at the same venue on the same day
-  // would collide regardless. Accept for POC.
+  // Read the ISO date from <time datetime="YYYY-MM-DDTHH:MM:SSZ"> elements inside
+  // .Ticket-date spans — these are the purchase buttons for each performance.
+  // Using the datetime attribute avoids both the full-vs-abbreviated month-name ambiguity
+  // and false matches from the "related events" <time> elements at the bottom of the page.
+  // Dedup on YYYY-MM-DD — same-day rehearsal + evening show collapse to one Event, which
+  // is intentional (the pipeline dedup hash uses title+date+venue anyway).
   const dates: string[] = [];
   const seenDates = new Set<string>();
 
-  // Walk body text nodes only — excludes <head> and <script>/<style> content.
-  // Each text node is visited exactly once (it is a direct child of exactly one element).
-  $('body').find('*').not('script, style').contents()
-    .filter((_, node) => node.type === 'text')
-    .each((_, node) => {
-      const text = (node as unknown as { data: string }).data?.trim() ?? '';
-      if (!FOK_DATE_RE.test(text)) return;
-      const parsed = parseFokDate(text);
-      if (parsed) {
-        if (!seenDates.has(parsed)) {
-          seenDates.add(parsed);
-          dates.push(parsed);
-        }
-      } else {
-        console.warn(`[fok] Could not parse date from: "${text}" on ${url}`);
-      }
-    });
+  $('.Ticket-date time[datetime]').each((_, el) => {
+    const datetimeAttr = $(el).attr('datetime') ?? '';
+    const parsed = datetimeAttr.split('T')[0] ?? '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(parsed) && !seenDates.has(parsed)) {
+      seenDates.add(parsed);
+      dates.push(parsed);
+    }
+  });
 
   // --- Venue ---
   // Use $('body').text() — strips tags, excludes <head> and <script> blocks
@@ -294,16 +280,6 @@ async function scrapeDetailPage(url: string): Promise<FokDetail> {
   return { dates, venue, performers, programme };
 }
 
-function parseFokDate(raw: string): string | null {
-  // "Wed, 18 Mar 2026 - 19:30" → "2026-03-18"
-  const m = FOK_DATE_RE.exec(raw);
-  if (!m) return null;
-  const day = parseInt(m[1]!, 10);
-  const monthNum = ENGLISH_MONTHS[m[2]!.toLowerCase()];
-  const year = parseInt(m[3]!, 10);
-  if (!monthNum || day < 1 || day > 31 || year < 2020) return null;
-  return `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
 
 function buildDescription(detail: FokDetail): string | undefined {
   const parts: string[] = [];

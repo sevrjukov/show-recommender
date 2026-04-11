@@ -48,7 +48,10 @@
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:openai.com)",
       "Bash(LIVE=1 npx jest berliner-phil --testTimeout=120000)",
-      "Bash(LIVE=1 npx jest test/event-pipeline/event-sources/elbphilharmonie.live.test.ts --testTimeout=120000 --verbose)"
+      "Bash(LIVE=1 npx jest test/event-pipeline/event-sources/elbphilharmonie.live.test.ts --testTimeout=120000 --verbose)",
+      "Bash(curl -s \"https://www.fok.cz/en/vondracek2027\")",
+      "Bash(curl -s \"https://www.fok.cz/en/program?page=2\")",
+      "Bash(node -e ':*)"
     ],
     "additionalDirectories": [
       "/Users/alex/Work/Personal/git/show-recommender/_bmad-output",
